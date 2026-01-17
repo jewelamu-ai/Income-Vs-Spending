@@ -3,140 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Tracker Pro</title>
+    <title>Budget Tracker Pro - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         .tab-active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
-        <div class="max-w-6xl mx-auto p-4">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    
+    <!-- Firebase Configuration Notice -->
+    <div id="firebaseNotice" class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <div class="max-w-6xl mx-auto">
+            <p class="text-sm text-yellow-700">
+                ⚠️ <strong>Firebase Setup Required:</strong> Please configure your Firebase credentials in the JavaScript section below. 
+                <a href="#setup-instructions" class="underline font-semibold">See setup instructions</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                     </svg>
-                    <h1 class="text-2xl font-bold">Budget Tracker Pro</h1>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm transition">Export</button>
-                    <button onclick="openSettings()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm transition">Settings</button>
-                </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Budget Tracker Pro</h1>
+                <p class="text-gray-600">Cloud-synced expense tracking</p>
             </div>
 
-            <!-- Account Selector -->
-            <div class="mb-4">
-                <select id="accountSelector" onchange="switchAccount()" class="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2 w-full backdrop-blur-sm">
-                    <option value="default">All Accounts</option>
-                </select>
+            <!-- Login Form -->
+            <div id="loginForm" class="space-y-4">
+                <input type="email" id="loginEmail" placeholder="Email" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="loginPassword" placeholder="Password" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <button onclick="loginUser()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg">
+                    Sign In
+                </button>
+                <button onclick="showRegisterForm()" class="w-full bg-white text-indigo-600 border-2 border-indigo-600 py-3 rounded-lg font-semibold hover:bg-indigo-50">
+                    Create Account
+                </button>
+                <div id="loginError" class="text-red-600 text-sm text-center hidden"></div>
             </div>
 
-            <!-- Balance Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                    <div class="text-xs opacity-90 mb-1">Income</div>
-                    <p id="totalIncome" class="text-xl font-bold">$0.00</p>
-                </div>
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                    <div class="text-xs opacity-90 mb-1">Expenses</div>
-                    <p id="totalExpense" class="text-xl font-bold">$0.00</p>
-                </div>
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                    <div class="text-xs opacity-90 mb-1">Balance</div>
-                    <p id="balance" class="text-xl font-bold">$0.00</p>
-                </div>
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                    <div class="text-xs opacity-90 mb-1">Budget Left</div>
-                    <p id="budgetLeft" class="text-xl font-bold">$0.00</p>
-                </div>
+            <!-- Register Form -->
+            <div id="registerForm" class="space-y-4 hidden">
+                <input type="email" id="registerEmail" placeholder="Email" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="registerPassword" placeholder="Password (min 6 characters)" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="registerPasswordConfirm" placeholder="Confirm Password" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <button onclick="registerUser()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg">
+                    Create Account
+                </button>
+                <button onclick="showLoginForm()" class="w-full bg-white text-gray-600 border-2 border-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50">
+                    Back to Login
+                </button>
+                <div id="registerError" class="text-red-600 text-sm text-center hidden"></div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="authLoading" class="hidden text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Please wait...</p>
             </div>
         </div>
     </div>
 
-    <!-- Tabs Navigation -->
-    <div class="bg-white shadow-sm sticky top-0 z-10">
-        <div class="max-w-6xl mx-auto flex overflow-x-auto">
-            <button onclick="switchTab('transactions')" id="tabTransactions" class="tab-active px-4 py-3 text-sm whitespace-nowrap">Transactions</button>
-            <button onclick="switchTab('budgets')" id="tabBudgets" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Budgets</button>
-            <button onclick="switchTab('analytics')" id="tabAnalytics" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Analytics</button>
-            <button onclick="switchTab('recurring')" id="tabRecurring" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Recurring</button>
-            <button onclick="switchTab('accounts')" id="tabAccounts" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Accounts</button>
-            <button onclick="switchTab('reminders')" id="tabReminders" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Reminders</button>
-        </div>
-    </div>
-
-    <!-- Main Content Container -->
-    <div class="max-w-6xl mx-auto p-4">
-        <!-- Transactions Tab -->
-        <div id="contentTransactions" class="tab-content">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div class="flex gap-2">
-                    <button onclick="setFilter('all')" id="filterAll" class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white">All</button>
-                    <button onclick="setFilter('income')" id="filterIncome" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Income</button>
-                    <button onclick="setFilter('expense')" id="filterExpense" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Expense</button>
+    <!-- Main App (Hidden until logged in) -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
+            <div class="max-w-6xl mx-auto p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                        <h1 class="text-2xl font-bold">Budget Tracker Pro</h1>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span id="userEmail" class="text-sm opacity-90 hidden md:block"></span>
+                        <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">Export</button>
+                        <button onclick="logoutUser()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">Logout</button>
+                    </div>
                 </div>
-                <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add</button>
+
+                <!-- Sync Status -->
+                <div id="syncStatus" class="text-xs opacity-75 mb-3 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span>Synced</span>
+                </div>
+
+                <!-- Account Selector -->
+                <div class="mb-4">
+                    <select id="accountSelector" onchange="switchAccount()" class="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2 w-full backdrop-blur-sm">
+                        <option value="default">All Accounts</option>
+                    </select>
+                </div>
+
+                <!-- Balance Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                        <div class="text-xs opacity-90 mb-1">Income</div>
+                        <p id="totalIncome" class="text-xl font-bold">$0.00</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                        <div class="text-xs opacity-90 mb-1">Expenses</div>
+                        <p id="totalExpense" class="text-xl font-bold">$0.00</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                        <div class="text-xs opacity-90 mb-1">Balance</div>
+                        <p id="balance" class="text-xl font-bold">$0.00</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                        <div class="text-xs opacity-90 mb-1">Budget Left</div>
+                        <p id="budgetLeft" class="text-xl font-bold">$0.00</p>
+                    </div>
+                </div>
             </div>
-            <div id="transactionsList" class="bg-white rounded-xl shadow-md"></div>
         </div>
 
-        <!-- Budgets Tab -->
-        <div id="contentBudgets" class="tab-content hidden">
-            <div class="mb-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Category Budgets</h2>
-                <button onclick="openBudgetModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Budget</button>
+        <!-- Tabs Navigation -->
+        <div class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="max-w-6xl mx-auto flex overflow-x-auto">
+                <button onclick="switchTab('transactions')" id="tabTransactions" class="tab-active px-4 py-3 text-sm whitespace-nowrap">Transactions</button>
+                <button onclick="switchTab('budgets')" id="tabBudgets" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Budgets</button>
+                <button onclick="switchTab('analytics')" id="tabAnalytics" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Analytics</button>
+                <button onclick="switchTab('recurring')" id="tabRecurring" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Recurring</button>
+                <button onclick="switchTab('accounts')" id="tabAccounts" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Accounts</button>
+                <button onclick="switchTab('reminders')" id="tabReminders" class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">Reminders</button>
             </div>
-            <div id="budgetsList"></div>
         </div>
 
-        <!-- Analytics Tab -->
-        <div id="contentAnalytics" class="tab-content hidden">
-            <div class="mb-4">
-                <select id="analyticsType" onchange="updateAnalytics()" class="px-4 py-2 border rounded-lg">
-                    <option value="category">By Category</option>
-                    <option value="monthly">Monthly Trend</option>
-                    <option value="comparison">Income vs Expense</option>
-                </select>
+        <!-- Main Content Container -->
+        <div class="max-w-6xl mx-auto p-4">
+            <!-- Transactions Tab -->
+            <div id="contentTransactions" class="tab-content">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div class="flex gap-2">
+                        <button onclick="setFilter('all')" id="filterAll" class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white">All</button>
+                        <button onclick="setFilter('income')" id="filterIncome" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Income</button>
+                        <button onclick="setFilter('expense')" id="filterExpense" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Expense</button>
+                    </div>
+                    <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add</button>
+                </div>
+                <div id="transactionsList" class="bg-white rounded-xl shadow-md"></div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-4">
-                <canvas id="analyticsChart"></canvas>
-            </div>
-            <div id="analyticsSummary" class="mt-4"></div>
-        </div>
 
-        <!-- Recurring Tab -->
-        <div id="contentRecurring" class="tab-content hidden">
-            <div class="mb-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Recurring Transactions</h2>
-                <button onclick="openRecurringModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Recurring</button>
+            <!-- Budgets Tab -->
+            <div id="contentBudgets" class="tab-content hidden">
+                <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Category Budgets</h2>
+                    <button onclick="openBudgetModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Budget</button>
+                </div>
+                <div id="budgetsList"></div>
             </div>
-            <div id="recurringList"></div>
-        </div>
 
-        <!-- Accounts Tab -->
-        <div id="contentAccounts" class="tab-content hidden">
-            <div class="mb-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Accounts & Assets</h2>
-                <button onclick="openAccountModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Account</button>
+            <!-- Analytics Tab -->
+            <div id="contentAnalytics" class="tab-content hidden">
+                <div class="mb-4">
+                    <select id="analyticsType" onchange="updateAnalytics()" class="px-4 py-2 border rounded-lg">
+                        <option value="category">By Category</option>
+                        <option value="monthly">Monthly Trend</option>
+                        <option value="comparison">Income vs Expense</option>
+                    </select>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-4">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+                <div id="analyticsSummary" class="mt-4"></div>
             </div>
-            <div id="accountsList"></div>
-        </div>
 
-        <!-- Reminders Tab -->
-        <div id="contentReminders" class="tab-content hidden">
-            <div class="mb-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Bill Reminders</h2>
-                <button onclick="openReminderModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Reminder</button>
+            <!-- Recurring Tab -->
+            <div id="contentRecurring" class="tab-content hidden">
+                <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Recurring Transactions</h2>
+                    <button onclick="openRecurringModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Recurring</button>
+                </div>
+                <div id="recurringList"></div>
             </div>
-            <div id="remindersList"></div>
+
+            <!-- Accounts Tab -->
+            <div id="contentAccounts" class="tab-content hidden">
+                <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Accounts & Assets</h2>
+                    <button onclick="openAccountModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Account</button>
+                </div>
+                <div id="accountsList"></div>
+            </div>
+
+            <!-- Reminders Tab -->
+            <div id="contentReminders" class="tab-content hidden">
+                <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Bill Reminders</h2>
+                    <button onclick="openReminderModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Reminder</button>
+                </div>
+                <div id="remindersList"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Transaction Modal -->
+    <!-- All Modals (Transaction, Budget, Account, Reminder) - Same as before -->
     <div id="transactionModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 my-8">
             <div class="flex justify-between items-center mb-4">
@@ -153,24 +230,11 @@
                 <select id="accountSelect" class="w-full px-4 py-3 border rounded-lg"></select>
                 <input type="date" id="date" class="w-full px-4 py-3 border rounded-lg">
                 <input type="text" id="description" placeholder="Description (optional)" class="w-full px-4 py-3 border rounded-lg">
-                <label class="flex items-center gap-2">
-                    <input type="checkbox" id="isRecurring" onchange="toggleRecurringOptions()">
-                    <span class="text-sm">Make this recurring</span>
-                </label>
-                <div id="recurringOptions" class="hidden space-y-2">
-                    <select id="recurringFrequency" class="w-full px-4 py-2 border rounded-lg text-sm">
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                    </select>
-                </div>
                 <button onclick="addTransaction()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold">Add Transaction</button>
             </div>
         </div>
     </div>
 
-    <!-- Budget Modal -->
     <div id="budgetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
@@ -190,7 +254,6 @@
         </div>
     </div>
 
-    <!-- Account Modal -->
     <div id="accountModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
@@ -213,7 +276,6 @@
         </div>
     </div>
 
-    <!-- Reminder Modal -->
     <div id="reminderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
@@ -234,31 +296,39 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Settings</h2>
-                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Currency</label>
-                    <select id="currency" class="w-full px-4 py-2 border rounded-lg">
-                        <option value="$">$ USD</option>
-                        <option value="€">€ EUR</option>
-                        <option value="£">£ GBP</option>
-                        <option value="₵">₵ GHS</option>
-                        <option value="₹">₹ INR</option>
-                    </select>
-                </div>
-                <button onclick="clearAllData()" class="w-full bg-red-600 text-white py-3 rounded-lg">Clear All Data</button>
-                <button onclick="closeSettings()" class="w-full bg-gray-200 text-gray-800 py-3 rounded-lg">Close</button>
-            </div>
-        </div>
-    </div>
-
     <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // ============================================
+        // REPLACE THESE VALUES WITH YOUR OWN FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyAocH0mqZA5iUXgq_BeTfGqV1cuUbWRntY",
+    authDomain: "budget-tracker-91bcc.firebaseapp.com",
+    databaseURL: "https://budget-tracker-91bcc-default-rtdb.firebaseio.com",
+    projectId: "budget-tracker-91bcc",
+    storageBucket: "budget-tracker-91bcc.firebasestorage.app",
+    messagingSenderId: "657417341954",
+    appId: "1:657417341954:web:08972dae3623bdd61f6b1b",
+    measurementId: "G-BV3C6NY0B1"
+        };
+
+        // Initialize Firebase
+        let app, auth, db, currentUser = null;
+        
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            console.log('Firebase initialized successfully');
+            document.getElementById('firebaseNotice').classList.add('hidden');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            alert('Firebase configuration needed. Please see setup instructions below.');
+        }
+
+        // ============================================
+        // APP STATE
+        // ============================================
         let transactions = [];
         let budgets = [];
         let accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
@@ -276,50 +346,174 @@
             expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Education', 'Other']
         };
 
+        // ============================================
+        // AUTHENTICATION
+        // ============================================
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('userEmail').textContent = user.email;
+                loadFirebaseData();
+            } else {
+                currentUser = null;
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+            }
+        });
+
+        function showLoginForm() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+        }
+
+        function showRegisterForm() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter email and password';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('authLoading').classList.remove('hidden');
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('authLoading').classList.add('hidden');
+            }
+        }
+
+        async function registerUser() {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            const errorEl = document.getElementById('registerError');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter email and password';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorEl.textContent = 'Password must be at least 6 characters';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                errorEl.textContent = 'Passwords do not match';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('authLoading').classList.remove('hidden');
+
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('authLoading').classList.add('hidden');
+            }
+        }
+
+        async function logoutUser() {
+            if (confirm('Are you sure you want to logout?')) {
+                await auth.signOut();
+            }
+        }
+
+        // ============================================
+        // FIREBASE DATA OPERATIONS
+        // ============================================
+        function setSyncStatus(message, isError = false) {
+            const el = document.getElementById('syncStatus');
+            el.innerHTML = `
+                <div class="w-2 h-2 ${isError ? 'bg-red-400' : 'bg-green-400'} rounded-full"></div>
+                <span>${message}</span>
+            `;
+        }
+
+        async function loadFirebaseData() {
+            if (!currentUser) return;
+            
+            setSyncStatus('Loading...');
+            
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (userDoc.exists) {
+                    const data = userDoc.data();
+                    transactions = data.transactions || [];
+                    budgets = data.budgets || [];
+                    accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+                    recurring = data.recurring || [];
+                    reminders = data.reminders || [];
+                    currency = data.currency || '$';
+                }
+                
+                init();
+                setSyncStatus('Synced');
+            } catch (error) {
+                console.error('Load error:', error);
+                setSyncStatus('Error loading data', true);
+            }
+        }
+
+        async function saveToFirebase() {
+            if (!currentUser) return;
+            
+            setSyncStatus('Syncing...');
+            
+            try {
+                await db.collection('users').doc(currentUser.uid).set({
+                    transactions,
+                    budgets,
+                    accounts,
+                    recurring,
+                    reminders,
+                    currency,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                setSyncStatus('Synced');
+            } catch (error) {
+                console.error('Save error:', error);
+                setSyncStatus('Sync failed', true);
+            }
+        }
+
+        // ============================================
+        // APP INITIALIZATION
+        // ============================================
         function init() {
-            loadData();
             document.getElementById('date').valueAsDate = new Date();
             updateCategories();
             updateAccountSelectors();
             renderTransactions();
             updateTotals();
-            checkReminders();
-            processRecurring();
         }
 
-        function loadData() {
-            transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            budgets = JSON.parse(localStorage.getItem('budgets') || '[]');
-            accounts = JSON.parse(localStorage.getItem('accounts') || '[{"id":"default","name":"Cash","type":"cash","balance":0}]');
-            recurring = JSON.parse(localStorage.getItem('recurring') || '[]');
-            reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-            currency = localStorage.getItem('currency') || '$';
-            document.getElementById('currency').value = currency;
-        }
-
-        function saveData() {
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            localStorage.setItem('budgets', JSON.stringify(budgets));
-            localStorage.setItem('accounts', JSON.stringify(accounts));
-            localStorage.setItem('recurring', JSON.stringify(recurring));
-            localStorage.setItem('reminders', JSON.stringify(reminders));
-            localStorage.setItem('currency', currency);
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('[id^="tab"]').forEach(el => el.classList.remove('tab-active'));
-            document.getElementById('content' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
-            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('tab-active');
-            
-            if (tab === 'analytics') updateAnalytics();
-            if (tab === 'budgets') renderBudgets();
-            if (tab === 'recurring') renderRecurring();
-            if (tab === 'accounts') renderAccounts();
-            if (tab === 'reminders') renderReminders();
-        }
-
+        // ============================================
+        // CORE FUNCTIONS (Same as before but with saveToFirebase())
+        // ============================================
         function setType(type) {
             currentType = type;
             document.getElementById('typeIncome').className = type === 'income' 
@@ -349,502 +543,4 @@
             selectors.forEach(id => {
                 const el = document.getElementById(id);
                 const current = el.value;
-                el.innerHTML = id === 'accountSelector' ? '<option value="default">All Accounts</option>' : '';
-                accounts.forEach(acc => {
-                    el.innerHTML += `<option value="${acc.id}">${acc.name} (${currency}${acc.balance.toFixed(2)})</option>`;
-                });
-                if (current) el.value = current;
-            });
-        }
-
-        function switchAccount() {
-            currentAccount = document.getElementById('accountSelector').value;
-            renderTransactions();
-            updateTotals();
-        }
-
-        function toggleRecurringOptions() {
-            const show = document.getElementById('isRecurring').checked;
-            document.getElementById('recurringOptions').classList.toggle('hidden', !show);
-        }
-
-        function openTransactionModal() {
-            document.getElementById('transactionModal').classList.remove('hidden');
-        }
-
-        function closeTransactionModal() {
-            document.getElementById('transactionModal').classList.add('hidden');
-            document.getElementById('amount').value = '';
-            document.getElementById('category').value = '';
-            document.getElementById('description').value = '';
-            document.getElementById('isRecurring').checked = false;
-            toggleRecurringOptions();
-        }
-
-        function addTransaction() {
-            const amount = parseFloat(document.getElementById('amount').value);
-            const category = document.getElementById('category').value;
-            const accountId = document.getElementById('accountSelect').value || 'default';
-            const date = document.getElementById('date').value;
-            const description = document.getElementById('description').value;
-            const isRecurring = document.getElementById('isRecurring').checked;
-
-            if (!amount || !category) {
-                alert('Please fill amount and category');
-                return;
-            }
-
-            const transaction = {
-                id: Date.now(),
-                type: currentType,
-                amount,
-                category,
-                accountId,
-                date,
-                description,
-                timestamp: new Date().toISOString()
-            };
-
-            transactions.unshift(transaction);
-            
-            const account = accounts.find(a => a.id === accountId);
-            if (account) {
-                account.balance += currentType === 'income' ? amount : -amount;
-            }
-
-            if (isRecurring) {
-                recurring.push({
-                    id: Date.now() + 1,
-                    ...transaction,
-                    frequency: document.getElementById('recurringFrequency').value,
-                    nextDate: getNextDate(date, document.getElementById('recurringFrequency').value)
-                });
-            }
-
-            saveData();
-            renderTransactions();
-            updateTotals();
-            updateAccountSelectors();
-            closeTransactionModal();
-        }
-
-        function deleteTransaction(id) {
-            if (!confirm('Delete this transaction?')) return;
-            const t = transactions.find(tr => tr.id === id);
-            if (t) {
-                const account = accounts.find(a => a.id === t.accountId);
-                if (account) {
-                    account.balance -= t.type === 'income' ? t.amount : -t.amount;
-                }
-            }
-            transactions = transactions.filter(t => t.id !== id);
-            saveData();
-            renderTransactions();
-            updateTotals();
-            updateAccountSelectors();
-        }
-
-        function setFilter(filter) {
-            currentFilter = filter;
-            ['All', 'Income', 'Expense'].forEach(f => {
-                const btn = document.getElementById('filter' + f);
-                btn.className = filter === f.toLowerCase()
-                    ? `px-3 py-2 text-sm rounded-lg bg-${f === 'Income' ? 'green' : f === 'Expense' ? 'red' : 'indigo'}-600 text-white`
-                    : 'px-3 py-2 text-sm rounded-lg bg-white text-gray-700';
-            });
-            renderTransactions();
-        }
-
-        function renderTransactions() {
-            const container = document.getElementById('transactionsList');
-            let filtered = transactions.filter(t => 
-                (currentFilter === 'all' || t.type === currentFilter) &&
-                (currentAccount === 'default' || t.accountId === currentAccount)
-            );
-
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="p-12 text-center text-gray-500"><p class="text-lg">No transactions yet</p></div>';
-                return;
-            }
-
-            container.innerHTML = filtered.map(t => {
-                const account = accounts.find(a => a.id === t.accountId);
-                return `
-                    <div class="p-4 border-b hover:bg-gray-50 flex justify-between items-center">
-                        <div class="flex-1">
-                            <div class="font-semibold text-gray-800">${t.category}</div>
-                            ${t.description ? `<div class="text-sm text-gray-600">${t.description}</div>` : ''}
-                            <div class="text-xs text-gray-500 mt-1">${t.date} • ${account?.name || 'Cash'}</div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-lg font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">
-                                ${t.type === 'income' ? '+' : '-'}${currency}${t.amount.toFixed(2)}
-                            </span>
-                            <button onclick="deleteTransaction(${t.id})" class="text-gray-400 hover:text-red-600">✕</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function updateTotals() {
-            const filtered = currentAccount === 'default' ? transactions : transactions.filter(t => t.accountId === currentAccount);
-            const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-            const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-            const balance = income - expense;
-            
-            const totalBudget = budgets.reduce((s, b) => s + (b.period === 'monthly' ? b.amount : b.amount / 12), 0);
-            const budgetLeft = totalBudget - expense;
-
-            document.getElementById('totalIncome').textContent = currency + income.toFixed(2);
-            document.getElementById('totalExpense').textContent = currency + expense.toFixed(2);
-            document.getElementById('balance').textContent = currency + balance.toFixed(2);
-            document.getElementById('balance').className = `text-xl font-bold ${balance >= 0 ? 'text-green-200' : 'text-red-200'}`;
-            document.getElementById('budgetLeft').textContent = currency + budgetLeft.toFixed(2);
-            document.getElementById('budgetLeft').className = `text-xl font-bold ${budgetLeft >= 0 ? 'text-green-200' : 'text-red-200'}`;
-        }
-
-        function openBudgetModal() { document.getElementById('budgetModal').classList.remove('hidden'); }
-        function closeBudgetModal() { document.getElementById('budgetModal').classList.add('hidden'); }
-
-        function addBudget() {
-            const category = document.getElementById('budgetCategory').value;
-            const amount = parseFloat(document.getElementById('budgetAmount').value);
-            const period = document.getElementById('budgetPeriod').value;
-
-            if (!category || !amount) {
-                alert('Please fill all fields');
-                return;
-            }
-
-            budgets = budgets.filter(b => b.category !== category);
-            budgets.push({ id: Date.now(), category, amount, period });
-            saveData();
-            renderBudgets();
-            closeBudgetModal();
-        }
-
-        function renderBudgets() {
-            const container = document.getElementById('budgetsList');
-            if (budgets.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">No budgets set</div>';
-                return;
-            }
-
-            container.innerHTML = budgets.map(b => {
-                const spent = transactions.filter(t => t.type === 'expense' && t.category === b.category)
-                    .reduce((s, t) => s + t.amount, 0);
-                const percentage = (spent / b.amount) * 100;
-                const color = percentage > 100 ? 'red' : percentage > 80 ? 'yellow' : 'green';
-                return `
-                    <div class="bg-white rounded-lg p-4 mb-3 shadow">
-                        <div class="flex justify-between mb-2">
-                            <span class="font-semibold">${b.category}</span>
-                            <button onclick="deleteBudget(${b.id})" class="text-red-500 text-sm">Delete</button>
-                        </div>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span>${currency}${spent.toFixed(2)} / ${currency}${b.amount.toFixed(2)}</span>
-                            <span class="text-${color}-600">${percentage.toFixed(0)}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-${color}-500 h-2 rounded-full" style="width: ${Math.min(percentage, 100)}%"></div>
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">${b.period}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function deleteBudget(id) {
-            budgets = budgets.filter(b => b.id !== id);
-            saveData();
-            renderBudgets();
-        }
-
-        function updateAnalytics() {
-            const type = document.getElementById('analyticsType').value;
-            const canvas = document.getElementById('analyticsChart');
-            const ctx = canvas.getContext('2d');
-
-            if (analyticsChart) analyticsChart.destroy();
-
-            if (type === 'category') {
-                const categoryData = {};
-                transactions.filter(t => t.type === 'expense').forEach(t => {
-                    categoryData[t.category] = (categoryData[t.category] || 0) + t.amount;
-                });
-
-                analyticsChart = new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: Object.keys(categoryData),
-                        datasets: [{
-                            data: Object.values(categoryData),
-                            backgroundColor: ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#22d3ee', '#a78bfa', '#f472b6']
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-                });
-            } else if (type === 'monthly') {
-                const monthlyData = {};
-                transactions.forEach(t => {
-                    const month = t.date.substring(0, 7);
-                    if (!monthlyData[month]) monthlyData[month] = { income: 0, expense: 0 };
-                    monthlyData[month][t.type] += t.amount;
-                });
-
-                const months = Object.keys(monthlyData).sort();
-                analyticsChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: months,
-                        datasets: [
-                            { label: 'Income', data: months.map(m => monthlyData[m].income), borderColor: '#22c55e', tension: 0.4 },
-                            { label: 'Expense', data: months.map(m => monthlyData[m].expense), borderColor: '#ef4444', tension: 0.4 }
-                        ]
-                    },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-                });
-            } else {
-                const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-                const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-
-                analyticsChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Income', 'Expense'],
-                        datasets: [{
-                            label: 'Amount',
-                            data: [income, expense],
-                            backgroundColor: ['#22c55e', '#ef4444']
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: false } } }
-                });
-            }
-
-            document.getElementById('analyticsSummary').innerHTML = `
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-white rounded-lg p-4 shadow">
-                        <div class="text-sm text-gray-600">Avg Daily Expense</div>
-                        <div class="text-xl font-bold text-red-600">${currency}${(transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0) / 30).toFixed(2)}</div>
-                    </div>
-                    <div class="bg-white rounded-lg p-4 shadow">
-                        <div class="text-sm text-gray-600">Top Category</div>
-                        <div class="text-xl font-bold text-indigo-600">${getTopCategory()}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getTopCategory() {
-            const cats = {};
-            transactions.filter(t => t.type === 'expense').forEach(t => {
-                cats[t.category] = (cats[t.category] || 0) + t.amount;
-            });
-            const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
-            return top ? top[0] : 'N/A';
-        }
-
-        function openRecurringModal() {
-            openTransactionModal();
-            document.getElementById('isRecurring').checked = true;
-            toggleRecurringOptions();
-        }
-
-        function renderRecurring() {
-            const container = document.getElementById('recurringList');
-            if (recurring.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">No recurring transactions</div>';
-                return;
-            }
-
-            container.innerHTML = recurring.map(r => `
-                <div class="bg-white rounded-lg p-4 mb-3 shadow">
-                    <div class="flex justify-between">
-                        <div>
-                            <div class="font-semibold">${r.category} - ${r.type}</div>
-                            <div class="text-sm text-gray-600">${currency}${r.amount.toFixed(2)} • ${r.frequency}</div>
-                            <div class="text-xs text-gray-500">Next: ${r.nextDate}</div>
-                        </div>
-                        <button onclick="deleteRecurring(${r.id})" class="text-red-500">Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function deleteRecurring(id) {
-            recurring = recurring.filter(r => r.id !== id);
-            saveData();
-            renderRecurring();
-        }
-
-        function processRecurring() {
-            const today = new Date().toISOString().split('T')[0];
-            recurring.forEach(r => {
-                if (r.nextDate <= today) {
-                    const newTrans = {...r, id: Date.now() + Math.random(), date: r.nextDate, timestamp: new Date().toISOString()};
-                    delete newTrans.frequency;
-                    delete newTrans.nextDate;
-                    transactions.unshift(newTrans);
-                    r.nextDate = getNextDate(r.nextDate, r.frequency);
-                }
-            });
-            saveData();
-        }
-
-        function getNextDate(date, frequency) {
-            const d = new Date(date);
-            if (frequency === 'daily') d.setDate(d.getDate() + 1);
-            else if (frequency === 'weekly') d.setDate(d.getDate() + 7);
-            else if (frequency === 'monthly') d.setMonth(d.getMonth() + 1);
-            else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1);
-            return d.toISOString().split('T')[0];
-        }
-
-        function openAccountModal() { document.getElementById('accountModal').classList.remove('hidden'); }
-        function closeAccountModal() { document.getElementById('accountModal').classList.add('hidden'); }
-
-        function addAccount() {
-            const name = document.getElementById('accountName').value;
-            const type = document.getElementById('accountType').value;
-            const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
-
-            if (!name) {
-                alert('Please enter account name');
-                return;
-            }
-
-            accounts.push({ id: Date.now().toString(), name, type, balance });
-            saveData();
-            updateAccountSelectors();
-            renderAccounts();
-            closeAccountModal();
-        }
-
-        function renderAccounts() {
-            const container = document.getElementById('accountsList');
-            container.innerHTML = accounts.map(a => `
-                <div class="bg-white rounded-lg p-4 mb-3 shadow">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <div class="font-semibold">${a.name}</div>
-                            <div class="text-sm text-gray-600">${a.type}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xl font-bold ${a.balance >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                ${currency}${a.balance.toFixed(2)}
-                            </div>
-                            ${a.id !== 'default' ? `<button onclick="deleteAccount('${a.id}')" class="text-red-500 text-sm mt-1">Delete</button>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function deleteAccount(id) {
-            if (!confirm('Delete this account?')) return;
-            accounts = accounts.filter(a => a.id !== id);
-            transactions = transactions.filter(t => t.accountId !== id);
-            saveData();
-            renderAccounts();
-            updateAccountSelectors();
-        }
-
-        function openReminderModal() { document.getElementById('reminderModal').classList.remove('hidden'); }
-        function closeReminderModal() { document.getElementById('reminderModal').classList.add('hidden'); }
-
-        function addReminder() {
-            const title = document.getElementById('reminderTitle').value;
-            const amount = parseFloat(document.getElementById('reminderAmount').value);
-            const date = document.getElementById('reminderDate').value;
-            const frequency = document.getElementById('reminderFrequency').value;
-
-            if (!title || !amount || !date) {
-                alert('Please fill all fields');
-                return;
-            }
-
-            reminders.push({ id: Date.now(), title, amount, date, frequency });
-            saveData();
-            renderReminders();
-            closeReminderModal();
-        }
-
-        function renderReminders() {
-            const container = document.getElementById('remindersList');
-            if (reminders.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">No reminders set</div>';
-                return;
-            }
-
-            const today = new Date().toISOString().split('T')[0];
-            container.innerHTML = reminders.map(r => {
-                const isPast = r.date < today;
-                return `
-                    <div class="bg-white rounded-lg p-4 mb-3 shadow ${isPast ? 'border-l-4 border-red-500' : ''}">
-                        <div class="flex justify-between">
-                            <div>
-                                <div class="font-semibold">${r.title}</div>
-                                <div class="text-sm text-gray-600">${currency}${r.amount.toFixed(2)}</div>
-                                <div class="text-xs ${isPast ? 'text-red-600' : 'text-gray-500'}">
-                                    Due: ${r.date} ${isPast ? '(OVERDUE)' : ''}
-                                </div>
-                            </div>
-                            <button onclick="deleteReminder(${r.id})" class="text-red-500">Delete</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function deleteReminder(id) {
-            reminders = reminders.filter(r => r.id !== id);
-            saveData();
-            renderReminders();
-        }
-
-        function checkReminders() {
-            const today = new Date().toISOString().split('T')[0];
-            const due = reminders.filter(r => r.date === today);
-            if (due.length > 0) {
-                alert(`You have ${due.length} bill(s) due today:\n` + due.map(r => `${r.title}: ${currency}${r.amount}`).join('\n'));
-            }
-        }
-
-        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
-        function closeSettings() {
-            currency = document.getElementById('currency').value;
-            saveData();
-            updateTotals();
-            renderTransactions();
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-
-        function clearAllData() {
-            if (!confirm('This will delete ALL your data. Are you sure?')) return;
-            localStorage.clear();
-            location.reload();
-        }
-
-        function exportData() {
-            const csv = [
-                ['Date', 'Type', 'Category', 'Amount', 'Account', 'Description'].join(','),
-                ...transactions.map(t => {
-                    const acc = accounts.find(a => a.id === t.accountId);
-                    return [t.date, t.type, t.category, t.amount, acc?.name || 'Cash', t.description].join(',');
-                })
-            ].join('\n');
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'budget_tracker_export.csv';
-            a.click();
-        }
-
-        init();
-    </script>
-</body>
-</html>
+                el.innerHTML = id === 'account
