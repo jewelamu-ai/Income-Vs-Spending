@@ -1,23 +1,18 @@
 <!DOCTYPE html>
+<!-- 
+Budget Tracker Pro - Cloud Sync
+A professional budget tracking application with Firebase integration
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget Tracker Pro - Cloud Sync</title>
     
-    <!-- PWA Meta Tags -->
     <meta name="description" content="Professional budget tracking app with cloud sync, analytics, and financial management">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Budget Tracker Pro">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- PWA Icons -->
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%234f46e5'/><rect x='48' y='64' width='96' height='64' fill='white'/><text x='96' y='112' font-family='Arial' font-size='48' fill='white' text-anchor='middle'>$</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,6 +28,28 @@
         .tab-active svg { stroke: #4f46e5; }
         .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Filter button pop animation */
+        .filter-btn-pop {
+            animation: pop 0.3s ease-in-out;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Active filter button styles */
+        .filter-btn-active {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .filter-btn-active.filter-all { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; }
+        .filter-btn-active.filter-income { background-color: #16a34a !important; color: white !important; border-color: #16a34a !important; }
+        .filter-btn-active.filter-expense { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
+        .filter-btn-active.filter-transfer { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
@@ -304,10 +321,10 @@
             <div id="contentTransactions" class="tab-content">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex gap-2">
-                        <button onclick="setFilter('all')" id="filterAll" class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white">All</button>
-                        <button onclick="setFilter('income')" id="filterIncome" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Income</button>
-                        <button onclick="setFilter('expense')" id="filterExpense" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Expense</button>
-                        <button onclick="setFilter('transfer')" id="filterTransfer" class="px-3 py-2 text-sm rounded-lg bg-white text-gray-700">Transfers</button>
+                        <button onclick="setFilter('all', event)" id="filterAll" class="filter-btn px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white border-2 border-indigo-600 transition-all duration-200 hover:shadow-lg">All</button>
+                        <button onclick="setFilter('income', event)" id="filterIncome" class="filter-btn px-3 py-2 text-sm rounded-lg bg-green-100 text-green-700 border-2 border-green-200 transition-all duration-200 hover:shadow-lg">Income</button>
+                        <button onclick="setFilter('expense', event)" id="filterExpense" class="filter-btn px-3 py-2 text-sm rounded-lg bg-red-100 text-red-700 border-2 border-red-200 transition-all duration-200 hover:shadow-lg">Expense</button>
+                        <button onclick="setFilter('transfer', event)" id="filterTransfer" class="filter-btn px-3 py-2 text-sm rounded-lg bg-blue-100 text-blue-700 border-2 border-blue-200 transition-all duration-200 hover:shadow-lg">Transfers</button>
                     </div>
                     <div class="flex gap-2 items-center">
                         <input type="text" id="searchInput" placeholder="Search transactions..." class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="handleSearch()">
@@ -690,6 +707,52 @@
                         <option value="AUD">AUD - Australian Dollar</option>
                     </select>
                 </div>
+
+                <!-- Category Management -->
+                <div class="border-t pt-4">
+                    <h3 class="text-lg font-semibold mb-3">Category Management</h3>
+
+                    <!-- Add Income Category -->
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Add Income Category</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="newIncomeCategory" placeholder="e.g., Bonus, Side Hustle" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <button onclick="addCustomCategory('income')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Add Expense Category -->
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Add Expense Category</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="newExpenseCategory" placeholder="e.g., Insurance, Subscription" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <button onclick="addCustomCategory('expense')" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Current Categories -->
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Categories</label>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <h4 class="font-semibold text-green-600 mb-1">Income</h4>
+                                <div id="incomeCategoriesList" class="space-y-1"></div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-red-600 mb-1">Expense</h4>
+                                <div id="expenseCategoriesList" class="space-y-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="border-t pt-4">
+                    <h3 class="text-lg font-semibold mb-3 text-red-600">⚠️ Data Management</h3>
+                    <p class="text-sm text-gray-600 mb-3">This will permanently delete all your transactions, budgets, accounts, and custom categories. This action cannot be undone.</p>
+                    <button onclick="clearAllData()" class="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700">🗑️ Clear All Data</button>
+                </div>
+
                 <button onclick="saveSettings()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">Save Settings</button>
             </div>
         </div>
@@ -713,115 +776,6 @@
 
         // Initialize Firebase
         let app, auth, db, currentUser = null;
-        
-        // ============================================
-        // PWA VARIABLES AND FUNCTIONS
-        // ============================================
-        let deferredPrompt;
-        
-        // PWA Install Prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            showInstallPrompt();
-        });
-        
-        window.addEventListener('appinstalled', (evt) => {
-            console.log('PWA was installed successfully');
-            hideInstallPrompt();
-        });
-        
-        function showInstallPrompt() {
-            // Only show if not already installed
-            if (window.matchMedia('(display-mode: standalone)').matches) return;
-            
-            const installBanner = document.createElement('div');
-            installBanner.id = 'installBanner';
-            installBanner.className = 'fixed bottom-4 left-4 right-4 bg-indigo-600 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:w-96';
-            installBanner.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold">Install Budget Tracker</p>
-                            <p class="text-sm opacity-90">Add to home screen for quick access</p>
-                        </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="hideInstallPrompt()" class="text-sm opacity-75 hover:opacity-100">Later</button>
-                        <button onclick="installPWA()" class="bg-white text-indigo-600 px-4 py-2 rounded text-sm font-semibold">Install</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(installBanner);
-        }
-        
-        function hideInstallPrompt() {
-            const banner = document.getElementById('installBanner');
-            if (banner) banner.remove();
-        }
-        
-        async function installPWA() {
-            if (!deferredPrompt) return;
-            
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            
-            if (outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-            } else {
-                console.log('User dismissed the install prompt');
-            }
-            
-            deferredPrompt = null;
-            hideInstallPrompt();
-        }
-        
-        function showUpdateNotification() {
-            const updateBanner = document.createElement('div');
-            updateBanner.id = 'updateBanner';
-            updateBanner.className = 'fixed top-4 left-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:w-96';
-            updateBanner.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold">Update Available</p>
-                            <p class="text-sm opacity-90">New version ready to install</p>
-                        </div>
-                    </div>
-                    <button onclick="updatePWA()" class="bg-white text-green-600 px-4 py-2 rounded text-sm font-semibold">Update</button>
-                </div>
-            `;
-            document.body.appendChild(updateBanner);
-            
-            // Auto-hide after 10 seconds
-            setTimeout(() => {
-                const banner = document.getElementById('updateBanner');
-                if (banner) banner.remove();
-            }, 10000);
-        }
-        
-        function updatePWA() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    registrations.forEach(registration => {
-                        registration.update();
-                    });
-                });
-            }
-            const banner = document.getElementById('updateBanner');
-            if (banner) banner.remove();
-            window.location.reload();
-        }
 
         // ============================================
         // AUTO-LOGOUT FUNCTIONALITY
@@ -1104,18 +1058,38 @@
                     reminders = data.reminders || [];
                     assets = data.assets || [];
                     currency = data.currency || 'GHS';
+                    
+                    // Save to localStorage as backup
+                    localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                        transactions, budgets, accounts, recurring, reminders, assets, currency
+                    }));
+                    
+                    // Recalculate account balances based on transactions to ensure accuracy
+                    recalculateAccountBalances();
+                } else {
+                    // No data in Firebase, try localStorage
+                    loadFromLocalStorage();
                 }
                 
                 init();
                 setSyncStatus('Synced');
             } catch (error) {
                 console.error('Load error:', error);
-                setSyncStatus('Error loading data', true);
+                setSyncStatus('Offline - using local data', true);
+                // Load from localStorage as fallback
+                loadFromLocalStorage();
+                init();
             }
         }
 
         async function saveToFirebase() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                // Save to localStorage only
+                localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                }));
+                return;
+            }
             
             setSyncStatus('Syncing...');
             
@@ -1131,10 +1105,147 @@
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                // Also save to localStorage as backup
+                localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                }));
+                
                 setSyncStatus('Synced');
             } catch (error) {
                 console.error('Save error:', error);
-                setSyncStatus('Sync failed', true);
+                setSyncStatus('Sync failed - saved locally', true);
+                // Save to localStorage as fallback
+                localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                }));
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const backup = localStorage.getItem('budgetTracker_backup');
+            if (backup) {
+                const data = JSON.parse(backup);
+                transactions = data.transactions || [];
+                budgets = data.budgets || [];
+                accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+                recurring = data.recurring || [];
+                reminders = data.reminders || [];
+                assets = data.assets || [];
+                currency = data.currency || 'GHS';
+                
+                // Recalculate account balances
+                recalculateAccountBalances();
+            } else {
+                // No backup, use defaults
+                accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+            }
+        }
+
+        async function clearAllData() {
+            if (!currentUser) {
+                alert('Please log in first');
+                return;
+            }
+
+            const confirmDelete = confirm(
+                '⚠️ WARNING: This will permanently delete ALL your data!\n\n' +
+                'This includes:\n' +
+                '• All transactions (income & expenses)\n' +
+                '• All budgets and budget history\n' +
+                '• All accounts and balances\n' +
+                '• All recurring transactions\n' +
+                '• All reminders\n' +
+                '• All assets\n' +
+                '• All custom categories\n\n' +
+                'This action CANNOT be undone!\n\n' +
+                'Are you sure you want to continue?'
+            );
+
+            if (!confirmDelete) return;
+
+            const finalConfirm = confirm('FINAL WARNING: Are you absolutely sure? Type "YES" to confirm.');
+            if (finalConfirm !== true) return;
+
+            try {
+                setSyncStatus('Deleting data...');
+
+                // Delete Firebase document
+                await db.collection('users').doc(currentUser.uid).delete();
+
+                // Clear localStorage
+                localStorage.removeItem('budgetTracker_customCategories');
+
+                // Reset all in-memory data to defaults
+                transactions = [];
+                budgets = [];
+                accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+                recurring = [];
+                reminders = [];
+                assets = [];
+                currency = 'GHS';
+
+                // Reinitialize the app
+                init();
+                updateCategoriesDisplay();
+
+                setSyncStatus('All data cleared');
+                
+                alert('✅ All data has been successfully deleted!\n\nYou can now start fresh with new entries.');
+
+                // Close settings modal
+                closeSettingsModal();
+
+            } catch (error) {
+                console.error('Clear data error:', error);
+                setSyncStatus('Error clearing data', true);
+                alert('❌ Error clearing data. Please try again.');
+            }
+        }
+
+        function recalculateAccountBalances() {
+            // Reset all account balances to 0
+            accounts.forEach(account => {
+                account.balance = 0;
+            });
+
+            // Reset budget spent
+            budgets.forEach(budget => {
+                budget.spent = 0;
+            });
+
+            // Recalculate balances based on transactions
+            transactions.forEach(transaction => {
+                if (transaction.type === 'transfer') {
+                    // Handle transfers
+                    const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
+                    const toAccount = accounts.find(a => a.id === transaction.toAccount);
+                    const amount = Number(transaction.amount || 0);
+                    
+                    if (fromAccount) fromAccount.balance -= amount;
+                    if (toAccount) toAccount.balance += amount;
+                } else if (transaction.type === 'income') {
+                    // Handle income
+                    const account = accounts.find(a => a.id === transaction.account);
+                    const amount = Number(transaction.amount || 0);
+                    
+                    if (account) account.balance += amount;
+                } else if (transaction.type === 'expense') {
+                    // Handle expense
+                    const account = accounts.find(a => a.id === transaction.account);
+                    const amount = Number(transaction.amount || 0);
+                    
+                    if (account) account.balance -= amount;
+                    
+                    // Update budget spent
+                    updateBudgetSpent(transaction.category, amount);
+                }
+            });
+        }
+
+        function updateBudgetSpent(category, amount) {
+            const budget = budgets.find(b => b.category === category);
+            if (budget) {
+                budget.spent = Number(budget.spent || 0) + amount;
             }
         }
 
@@ -1146,31 +1257,14 @@
             updateCategories();
             updateAccountSelectors();
             renderTransactions();
+            renderBudgets();
             updateTotals();
             
-            // Register Service Worker for PWA
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registered successfully:', registration.scope);
-                        
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            if (newWorker) {
-                                newWorker.addEventListener('statechange', () => {
-                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                        // New version available
-                                        showUpdateNotification();
-                                    }
-                                });
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.log('Service Worker registration failed:', error);
-                    });
-            }
+            // Initialize filter button active state
+            setFilter('all');
+            
+            // Initialize category display for settings modal
+            updateCategoriesDisplay();
             
             // Initialize currency select
             const currencySelect = document.getElementById('currencySelect');
@@ -1231,13 +1325,35 @@
         function updateCategories() {
             const select = document.getElementById('category');
             const budgetSelect = document.getElementById('budgetCategory');
+
+            // Load custom categories
+            const customCategories = loadCustomCategories();
+
             select.innerHTML = '<option value="">Select category</option>';
             budgetSelect.innerHTML = '<option value="">Select category</option>';
-            categories[currentType].forEach(cat => {
-                select.innerHTML += `<option value="${cat}">${cat}</option>`;
-            });
+
+            // Add default categories if currentType is not transfer
+            if (currentType !== 'transfer' && categories[currentType]) {
+                categories[currentType].forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            }
+
+            // Add custom categories if currentType is not transfer
+            if (currentType !== 'transfer' && customCategories[currentType]) {
+                customCategories[currentType].forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat} ⭐</option>`;
+                });
+            }
+
+            // Add expense categories for budget select
             categories.expense.forEach(cat => {
                 budgetSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            // Add custom expense categories for budget select
+            customCategories.expense.forEach(cat => {
+                budgetSelect.innerHTML += `<option value="${cat}">${cat} ⭐</option>`;
             });
         }
         function updateAccountSelectors() {
@@ -1425,11 +1541,66 @@
                 }).join('');
             }
 
+            function renderBudgets() {
+                const el = document.getElementById('budgetsList');
+                if (!el) return;
+                if (!budgets || budgets.length === 0) {
+                    el.innerHTML = `
+                        <div class="text-center py-8">
+                            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 0v6m0-6l-6 6m6-6l6 6m-6-6v12"></path>
+                            </svg>
+                            <p class="text-gray-500 text-lg">No budgets set</p>
+                            <p class="text-gray-400 text-sm">Create budgets to track your spending limits</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                el.innerHTML = budgets.map(budget => {
+                    const spent = budget.spent || 0;
+                    const remaining = budget.amount - spent;
+                    const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+                    const isOverBudget = spent > budget.amount;
+                    const progressColor = isOverBudget ? 'bg-red-500' : percentage > 80 ? 'bg-yellow-500' : 'bg-green-500';
+
+                    return `
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-semibold text-gray-900">${budget.category}</h3>
+                                <span class="text-sm text-gray-500 capitalize">${budget.period}</span>
+                            </div>
+                            <div class="mb-2">
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Spent: ${currency}${spent.toFixed(2)}</span>
+                                    <span>Budget: ${currency}${budget.amount.toFixed(2)}</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${Math.min(percentage, 100)}%"></div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    ${remaining >= 0 ? 'Remaining' : 'Over'}: ${currency}${Math.abs(remaining).toFixed(2)}
+                                </span>
+                                <button onclick="deleteBudget('${budget.category}')" class="text-red-500 hover:text-red-700 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
             function updateTotals() {
                 let income = 0, expense = 0;
                 (transactions || []).forEach(t => {
                     const amt = Number(t.amount || 0);
-                    if (t.type === 'income') income += amt; else expense += amt;
+                    if (t.type === 'income') income += amt;
+                    else if (t.type === 'expense') expense += amt;
+                    // Transfers are not counted in income/expense totals
                 });
                 const incomeEl = document.getElementById('totalIncome');
                 const expenseEl = document.getElementById('totalExpense');
@@ -1622,7 +1793,13 @@
 
             function openTransactionModal() { document.getElementById('transactionModal').classList.remove('hidden'); }
             function closeTransactionModal() { document.getElementById('transactionModal').classList.add('hidden'); }
-            function openBudgetModal() { document.getElementById('budgetModal').classList.remove('hidden'); }
+            function openBudgetModal() { 
+                document.getElementById('budgetModal').classList.remove('hidden');
+                // Clear form fields when opening
+                document.getElementById('budgetCategory').value = '';
+                document.getElementById('budgetAmount').value = '';
+                document.getElementById('budgetPeriod').value = 'monthly';
+            }
             function closeBudgetModal() { document.getElementById('budgetModal').classList.add('hidden'); }
 
             function addBudget() {
@@ -1636,7 +1813,19 @@
                 budgets.push({ category, amount, period, spent: 0 });
                 saveToFirebase();
                 closeBudgetModal();
-                // Optionally render budgets
+                // Clear form fields
+                document.getElementById('budgetCategory').value = '';
+                document.getElementById('budgetAmount').value = '';
+                document.getElementById('budgetPeriod').value = 'monthly';
+                renderBudgets();
+            }
+
+            function deleteBudget(category) {
+                if (confirm('Are you sure you want to delete this budget?')) {
+                    budgets = budgets.filter(b => b.category !== category);
+                    saveToFirebase();
+                    renderBudgets();
+                }
             }
 
             function addTransaction() {
@@ -1701,6 +1890,18 @@
                         date,
                         description
                     });
+                    
+                    // Update account balance
+                    const selectedAccount = accounts.find(a => a.id === account);
+                    if (selectedAccount) {
+                        if (currentType === 'income') {
+                            selectedAccount.balance = Number(selectedAccount.balance || 0) + amount;
+                        } else if (currentType === 'expense') {
+                            selectedAccount.balance = Number(selectedAccount.balance || 0) - amount;
+                            // Update budget spent
+                            updateBudgetSpent(category, amount);
+                        }
+                    }
                 }
                 
                 saveToFirebase();
@@ -1708,11 +1909,41 @@
                 renderTransactions();
                 updateTotals();
                 renderAccounts();
+                renderBudgets();
                 alert('Transaction added successfully!');
             }
 
-            function setFilter(filter) {
+            function setFilter(filter, event) {
+                // Add pop animation to clicked button (only if event is provided)
+                if (event && event.target) {
+                    const clickedButton = event.target;
+                    clickedButton.classList.add('filter-btn-pop');
+                    setTimeout(() => {
+                        clickedButton.classList.remove('filter-btn-pop');
+                    }, 300);
+                }
+                
+                // Update current filter
                 currentFilter = filter;
+                
+                // Update button active states
+                const buttons = ['filterAll', 'filterIncome', 'filterExpense', 'filterTransfer'];
+                buttons.forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        // Remove all active classes
+                        btn.classList.remove('filter-btn-active', 'filter-all', 'filter-income', 'filter-expense', 'filter-transfer');
+                        
+                        // Add active class based on current filter
+                        if ((btnId === 'filterAll' && filter === 'all') ||
+                            (btnId === 'filterIncome' && filter === 'income') ||
+                            (btnId === 'filterExpense' && filter === 'expense') ||
+                            (btnId === 'filterTransfer' && filter === 'transfer')) {
+                            btn.classList.add('filter-btn-active', `filter-${filter}`);
+                        }
+                    }
+                });
+                
                 renderTransactions();
             }
 
@@ -1720,8 +1951,221 @@
                 renderTransactions();
             }
 
+            function initializeFilterButtons() {
+                // Set initial active state for 'all' filter without animation
+                const filterAllBtn = document.getElementById('filterAll');
+                if (filterAllBtn) {
+                    filterAllBtn.classList.add('filter-btn-active', 'filter-all');
+                }
+            }
+
+            function updateExportFormatOptions() {
+                const exportType = document.getElementById('exportType').value;
+                const formatSelect = document.getElementById('exportFormat');
+                
+                if (exportType === 'all') {
+                    formatSelect.innerHTML = '<option value="json">JSON (Backup)</option>';
+                } else {
+                    formatSelect.innerHTML = `
+                        <option value="csv">CSV (Spreadsheet)</option>
+                        <option value="json">JSON (Backup)</option>
+                    `;
+                }
+            }
+
             function exportData() {
-                alert('Export feature not implemented yet');
+                // Create export modal
+                const modal = document.createElement('div');
+                modal.id = 'exportModal';
+                modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">Export Data</h2>
+                            <button onclick="closeExportModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">What to export:</label>
+                                <select id="exportType" onchange="updateExportFormatOptions()" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="transactions">Transactions</option>
+                                    <option value="accounts">Accounts & Assets</option>
+                                    <option value="budgets">Budgets</option>
+                                    <option value="reminders">Reminders</option>
+                                    <option value="all">All Data (JSON)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Export format:</label>
+                                <select id="exportFormat" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="csv">CSV (Spreadsheet)</option>
+                                    <option value="json">JSON (Backup)</option>
+                                </select>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button onclick="performExport()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
+                                    Export Data
+                                </button>
+                                <button onclick="closeExportModal()" class="flex-1 bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                updateExportFormatOptions(); // Initialize format options
+            }
+
+            function closeExportModal() {
+                const modal = document.getElementById('exportModal');
+                if (modal) modal.remove();
+            }
+
+            function performExport() {
+                const exportType = document.getElementById('exportType').value;
+                const exportFormat = document.getElementById('exportFormat').value;
+
+                let data;
+                let filename;
+
+                switch (exportType) {
+                    case 'transactions':
+                        data = transactions;
+                        filename = `budget-transactions-${new Date().toISOString().split('T')[0]}`;
+                        break;
+                    case 'accounts':
+                        data = [...accounts, ...assets.map(asset => ({ ...asset, type: 'asset', category: asset.category }))];
+                        filename = `budget-accounts-assets-${new Date().toISOString().split('T')[0]}`;
+                        break;
+                    case 'budgets':
+                        data = budgets;
+                        filename = `budget-budgets-${new Date().toISOString().split('T')[0]}`;
+                        break;
+                    case 'reminders':
+                        data = reminders;
+                        filename = `budget-reminders-${new Date().toISOString().split('T')[0]}`;
+                        break;
+                    case 'all':
+                        data = {
+                            transactions,
+                            accounts,
+                            assets,
+                            budgets,
+                            reminders,
+                            currency,
+                            exportDate: new Date().toISOString(),
+                            version: '1.0'
+                        };
+                        filename = `budget-backup-${new Date().toISOString().split('T')[0]}`;
+                        break;
+                }
+
+                if (exportFormat === 'csv') {
+                    exportToCSV(data, filename, exportType);
+                } else {
+                    exportToJSON(data, filename);
+                }
+
+                closeExportModal();
+            }
+
+            function exportToCSV(data, filename, type) {
+                if (!Array.isArray(data)) {
+                    // Handle non-array data (like 'all' export)
+                    if (type === 'all') {
+                        // For 'all' export, create separate CSV files or combine
+                        alert('For complete backup, please use JSON format. CSV format is for individual data types.');
+                        return;
+                    }
+                    alert('CSV export is only available for list data (transactions, accounts, etc.)');
+                    return;
+                }
+
+                if (data.length === 0) {
+                    alert('No data to export');
+                    return;
+                }
+
+                // Get all unique keys from the data
+                const headers = new Set();
+                data.forEach(item => {
+                    Object.keys(item).forEach(key => headers.add(key));
+                });
+
+                const headerArray = Array.from(headers);
+
+                // Create CSV content
+                let csvContent = headerArray.join(',') + '\n';
+
+                data.forEach(item => {
+                    const row = headerArray.map(header => {
+                        const value = item[header];
+                        if (value === null || value === undefined) return '';
+                        if (typeof value === 'object') return JSON.stringify(value);
+                        // Escape commas and quotes in CSV
+                        const stringValue = String(value);
+                        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                            return '"' + stringValue.replace(/"/g, '""') + '"';
+                        }
+                        return stringValue;
+                    });
+                    csvContent += row.join(',') + '\n';
+                });
+
+                // Download the file
+                downloadFile(csvContent, filename + '.csv', 'text/csv');
+            }
+
+            function exportToJSON(data, filename) {
+                const jsonContent = JSON.stringify(data, null, 2);
+                downloadFile(jsonContent, filename + '.json', 'application/json');
+            }
+
+            function downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.style.display = 'none';
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Clean up the URL object
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+
+                // Show success message
+                showExportSuccess(filename);
+            }
+
+            function showExportSuccess(filename) {
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm';
+                notification.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Export Complete</p>
+                            <p class="text-sm opacity-90">${filename} downloaded</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+
+                // Auto-remove after 3 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 3000);
             }
 
             function openRecurringModal() { /* stub */ }
@@ -1810,6 +2254,8 @@
                 // Set current currency in the select
                 const currencySelect = document.getElementById('currencySelect');
                 currencySelect.value = currency;
+                // Load and display categories
+                updateCategoriesDisplay();
             }
 
             function closeSettingsModal() {
@@ -1826,6 +2272,103 @@
                 saveToFirebase();
                 closeSettingsModal();
                 alert('Settings saved successfully!');
+            }
+
+            // ============================================
+            // CATEGORY MANAGEMENT
+            // ============================================
+
+            // Load custom categories from localStorage
+            function loadCustomCategories() {
+                const saved = localStorage.getItem('budgetTracker_customCategories');
+                return saved ? JSON.parse(saved) : { income: [], expense: [] };
+            }
+
+            // Save custom categories to localStorage
+            function saveCustomCategories(customCategories) {
+                localStorage.setItem('budgetTracker_customCategories', JSON.stringify(customCategories));
+            }
+
+            // Add a new custom category
+            function addCustomCategory(type) {
+                const inputId = type === 'income' ? 'newIncomeCategory' : 'newExpenseCategory';
+                const categoryName = document.getElementById(inputId).value.trim();
+
+                if (!categoryName) {
+                    alert('Please enter a category name');
+                    return;
+                }
+
+                // Check if category already exists
+                const customCategories = loadCustomCategories();
+                const allCategories = [...categories[type], ...customCategories[type]];
+
+                if (allCategories.includes(categoryName)) {
+                    alert('This category already exists');
+                    return;
+                }
+
+                // Add the new category
+                customCategories[type].push(categoryName);
+                saveCustomCategories(customCategories);
+
+                // Clear input and refresh display
+                document.getElementById(inputId).value = '';
+                updateCategoriesDisplay();
+                updateCategories(); // Update dropdowns
+
+                alert(`"${categoryName}" added to ${type} categories!`);
+            }
+
+            // Remove a custom category
+            function removeCustomCategory(type, categoryName) {
+                if (!confirm(`Are you sure you want to remove "${categoryName}"? This won't affect existing transactions.`)) {
+                    return;
+                }
+
+                const customCategories = loadCustomCategories();
+                customCategories[type] = customCategories[type].filter(cat => cat !== categoryName);
+                saveCustomCategories(customCategories);
+
+                updateCategoriesDisplay();
+                updateCategories(); // Update dropdowns
+
+                alert(`"${categoryName}" removed from ${type} categories!`);
+            }
+
+            // Update the categories display in settings modal
+            function updateCategoriesDisplay() {
+                const customCategories = loadCustomCategories();
+
+                // Update income categories
+                const incomeList = document.getElementById('incomeCategoriesList');
+                if (incomeList) {
+                    const allIncomeCategories = [...categories.income, ...customCategories.income];
+                    incomeList.innerHTML = allIncomeCategories.map(cat => {
+                        const isCustom = customCategories.income.includes(cat);
+                        return `
+                            <div class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
+                                <span>${cat}</span>
+                                ${isCustom ? `<button onclick="removeCustomCategory('income', '${cat}')" class="text-red-500 hover:text-red-700 ml-2">×</button>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                // Update expense categories
+                const expenseList = document.getElementById('expenseCategoriesList');
+                if (expenseList) {
+                    const allExpenseCategories = [...categories.expense, ...customCategories.expense];
+                    expenseList.innerHTML = allExpenseCategories.map(cat => {
+                        const isCustom = customCategories.expense.includes(cat);
+                        return `
+                            <div class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
+                                <span>${cat}</span>
+                                ${isCustom ? `<button onclick="removeCustomCategory('expense', '${cat}')" class="text-red-500 hover:text-red-700 ml-2">×</button>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
             }
 
             function renderAccounts() {

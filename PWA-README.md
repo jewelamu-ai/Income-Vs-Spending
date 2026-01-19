@@ -24,12 +24,21 @@ Your budget tracker has been converted to a Progressive Web App! Here's how to c
 
 You need to create PNG icons in various sizes. Here's how:
 
-**Option A: Use the Icon Generator**
+**Option A: Use Node.js (Recommended)**
+```bash
+# Install dependencies
+npm install
+
+# Generate all icons automatically
+npm run generate-icons
+```
+
+**Option B: Use the Icon Generator**
 1. Open `icon-generator.html` in your browser
 2. Click "Download PNG" for each icon size
 3. Save them in the `icons/` folder
 
-**Option B: Use Online Tools**
+**Option C: Use Online Tools**
 1. Go to [PWA Icon Generator](https://favicon.io/favicon-generator/) or similar
 2. Upload your logo or use the SVG from `icons/icon-192.svg`
 3. Generate icons for these sizes: 72, 96, 128, 144, 152, 192, 384, 512
@@ -46,13 +55,36 @@ npx serve .
 ```
 
 **Test PWA Features:**
-1. Open `http://localhost:8000` in Chrome/Edge
+1. Open `http://localhost:8000` in Chrome/Edge (NOT by double-clicking index.html)
 2. Open DevTools (F12)
 3. Go to Application tab
 4. Check:
    - Service Worker is registered
    - Manifest is valid
    - App can be installed
+
+## 🐛 Troubleshooting
+
+### CORS Errors
+**Error**: `Access to manifest at 'file://...' has been blocked by CORS policy`
+**Cause**: Opening HTML file directly instead of serving via HTTP
+**Solution**: Always use a web server:
+```bash
+python -m http.server 8000
+# Then open http://localhost:8000
+```
+
+### Missing Icons
+**Error**: `GET ...icon-192.png net::ERR_FILE_NOT_FOUND`
+**Cause**: PNG icons haven't been generated
+**Solutions**:
+1. Generate PNG icons: `npm install && npm run generate-icons`
+2. Or use SVG icons (already configured as fallback)
+
+### JavaScript Errors
+**Error**: `Cannot read properties of undefined (reading 'target')`
+**Cause**: setFilter function called without event parameter
+**Solution**: This has been fixed in the latest version
 
 ### 3. Deploy to Production
 
