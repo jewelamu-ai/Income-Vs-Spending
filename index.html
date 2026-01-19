@@ -170,6 +170,68 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Financial Position Section -->
+                <div class="mt-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Financial Position</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Income Sources -->
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-800">Income Sources</h4>
+                            </div>
+                            <div id="incomeSourcesList" class="space-y-3">
+                                <!-- Income sources will be populated here -->
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold text-gray-700">Total Assets</span>
+                                    <span id="totalAssetsValue" class="font-bold text-green-600 text-lg">GHS0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Liabilities -->
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-800">Liabilities</h4>
+                            </div>
+                            <div id="liabilitiesList" class="space-y-3">
+                                <!-- Liabilities will be populated here -->
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold text-gray-700">Total Liabilities</span>
+                                    <span id="totalLiabilitiesValue" class="font-bold text-red-600 text-lg">GHS0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Worth Summary -->
+                    <div class="mt-6 bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-lg font-semibold">Net Worth</h4>
+                                <p class="text-gray-300 text-sm">Assets minus Liabilities</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="netWorthValue" class="text-3xl font-bold">GHS0.00</p>
+                                <p class="text-sm text-gray-300">Current Position</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -246,7 +308,7 @@
             <!-- Analytics Tab -->
             <div id="contentAnalytics" class="tab-content hidden">
                 <div class="mb-4">
-                    <select id="analyticsType" onchange="updateAnalytics()" class="px-4 py-2 border rounded-lg">
+                    <select id="analyticsType" class="px-4 py-2 border rounded-lg">
                         <option value="category">By Category</option>
                         <option value="monthly">Monthly Trend</option>
                         <option value="comparison">Income vs Expense</option>
@@ -831,6 +893,11 @@
             // Initialize currency select
             const currencySelect = document.getElementById('currencySelect');
             if (currencySelect) currencySelect.value = currency;
+            // Initialize analytics select event listener
+            const analyticsSelect = document.getElementById('analyticsType');
+            if (analyticsSelect) {
+                analyticsSelect.addEventListener('change', updateAnalytics);
+            }
             // Initialize current date
             const dateEl = document.getElementById('currentDate');
             if (dateEl) {
@@ -1090,6 +1157,145 @@
                 if (expenseEl) expenseEl.textContent = currency + expense.toFixed(2);
                 if (balanceEl) balanceEl.textContent = currency + (income - expense).toFixed(2);
                 if (budgetEl) budgetEl.textContent = currency + '0.00';
+
+                // Update financial position
+                updateFinancialPosition();
+            }
+
+            function updateFinancialPosition() {
+                const incomeSourcesEl = document.getElementById('incomeSourcesList');
+                const liabilitiesEl = document.getElementById('liabilitiesList');
+                const totalAssetsEl = document.getElementById('totalAssetsValue');
+                const totalLiabilitiesEl = document.getElementById('totalLiabilitiesValue');
+                const netWorthEl = document.getElementById('netWorthValue');
+
+                if (!incomeSourcesEl || !liabilitiesEl) return;
+
+                let totalAssets = 0;
+                let totalLiabilities = 0;
+
+                // Income Sources: Accounts with positive balances + Assets
+                const incomeSources = [];
+                const liabilities = [];
+
+                // Add account balances
+                (accounts || []).forEach(account => {
+                    const balance = Number(account.balance || 0);
+                    const accountType = account.type || 'cash';
+
+                    if (balance > 0) {
+                        // Positive balance = Asset/Income Source
+                        incomeSources.push({
+                            name: account.name,
+                            type: accountType,
+                            amount: balance,
+                            category: 'account'
+                        });
+                        totalAssets += balance;
+                    } else if (balance < 0) {
+                        // Negative balance = Liability
+                        liabilities.push({
+                            name: account.name,
+                            type: accountType,
+                            amount: Math.abs(balance),
+                            category: 'account'
+                        });
+                        totalLiabilities += Math.abs(balance);
+                    }
+                });
+
+                // Add assets
+                (assets || []).forEach(asset => {
+                    const value = Number(asset.value || 0);
+                    if (value > 0) {
+                        incomeSources.push({
+                            name: asset.name,
+                            type: asset.category || 'asset',
+                            amount: value,
+                            category: 'asset'
+                        });
+                        totalAssets += value;
+                    }
+                });
+
+                // Sort by amount (highest first)
+                incomeSources.sort((a, b) => b.amount - a.amount);
+                liabilities.sort((a, b) => b.amount - a.amount);
+
+                // Get type icons and colors
+                const getTypeInfo = (type, category) => {
+                    if (category === 'asset') {
+                        const assetIcons = {
+                            'real-estate': { icon: '🏠', color: 'text-green-600' },
+                            'investment': { icon: '📈', color: 'text-purple-600' },
+                            'vehicle': { icon: '🚗', color: 'text-blue-600' },
+                            'jewelry': { icon: '💍', color: 'text-yellow-600' },
+                            'other': { icon: '💰', color: 'text-gray-600' }
+                        };
+                        return assetIcons[type] || assetIcons['other'];
+                    } else {
+                        const accountIcons = {
+                            'cash': { icon: '💵', color: 'text-green-600' },
+                            'bank': { icon: '🏦', color: 'text-blue-600' },
+                            'credit': { icon: '💳', color: 'text-red-600' },
+                            'mtn-momo': { icon: '📱', color: 'text-yellow-600' },
+                            'telecel-cash': { icon: '📞', color: 'text-purple-600' },
+                            'investment': { icon: '📈', color: 'text-indigo-600' },
+                            'asset': { icon: '🏠', color: 'text-teal-600' },
+                            'debt': { icon: '💰', color: 'text-orange-600' }
+                        };
+                        return accountIcons[type] || accountIcons['cash'];
+                    }
+                };
+
+                // Render income sources
+                incomeSourcesEl.innerHTML = incomeSources.length > 0 ?
+                    incomeSources.map(source => {
+                        const typeInfo = getTypeInfo(source.type, source.category);
+                        return `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-lg">${typeInfo.icon}</span>
+                                    <div>
+                                        <p class="font-medium text-gray-900">${source.name}</p>
+                                        <p class="text-sm text-gray-500 capitalize">${source.type.replace('-', ' ')}</p>
+                                    </div>
+                                </div>
+                                <span class="font-semibold text-gray-900">${currency}${source.amount.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }).join('') :
+                    '<p class="text-gray-500 text-center py-4">No income sources yet</p>';
+
+                // Render liabilities
+                liabilitiesEl.innerHTML = liabilities.length > 0 ?
+                    liabilities.map(liability => {
+                        const typeInfo = getTypeInfo(liability.type, liability.category);
+                        return `
+                            <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-lg">${typeInfo.icon}</span>
+                                    <div>
+                                        <p class="font-medium text-gray-900">${liability.name}</p>
+                                        <p class="text-sm text-gray-500 capitalize">${liability.type.replace('-', ' ')}</p>
+                                    </div>
+                                </div>
+                                <span class="font-semibold text-red-600">${currency}${liability.amount.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }).join('') :
+                    '<p class="text-gray-500 text-center py-4">No liabilities</p>';
+
+                // Update totals
+                if (totalAssetsEl) totalAssetsEl.textContent = currency + totalAssets.toFixed(2);
+                if (totalLiabilitiesEl) totalLiabilitiesEl.textContent = currency + totalLiabilities.toFixed(2);
+
+                // Calculate and display net worth
+                const netWorth = totalAssets - totalLiabilities;
+                if (netWorthEl) {
+                    netWorthEl.textContent = currency + netWorth.toFixed(2);
+                    netWorthEl.className = netWorth >= 0 ? 'text-3xl font-bold text-green-400' : 'text-3xl font-bold text-red-400';
+                }
             }
 
             // Lightweight helpers used by UI; full implementations can be restored later
@@ -1108,6 +1314,8 @@
                     renderAssets();
                 } else if (tab === 'reminders') {
                     renderReminders();
+                } else if (tab === 'analytics') {
+                    renderAnalytics();
                 }
 
                 // Update tab button styles
@@ -1282,9 +1490,10 @@
 
                 accounts.push(newAccount);
                 saveToFirebase();
+                closeAccountModal();
                 updateAccountSelectors();
                 renderAccounts();
-                closeAccountModal();
+                updateFinancialPosition();
                 alert('Account added successfully!');
             }
             function addReminder() { 
@@ -1335,6 +1544,140 @@
                 saveToFirebase();
                 closeSettingsModal();
                 alert('Settings saved successfully!');
+            }
+
+            function renderAccounts() {
+                const el = document.getElementById('accountsList');
+                if (!el) return;
+
+                if (!accounts || accounts.length === 0) {
+                    el.innerHTML = `
+                        <div class="text-center py-8">
+                            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                            <p class="text-gray-500 text-lg">No accounts yet</p>
+                            <p class="text-gray-400 text-sm">Add your first account to start tracking</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                el.innerHTML = accounts.map(account => {
+                    const typeIcons = {
+                        'cash': '💵',
+                        'bank': '🏦',
+                        'credit': '💳',
+                        'mtn-momo': '📱',
+                        'telecel-cash': '📞',
+                        'investment': '📈',
+                        'asset': '🏠',
+                        'debt': '💰'
+                    };
+
+                    const typeColors = {
+                        'cash': 'bg-green-100 text-green-800 border-green-200',
+                        'bank': 'bg-blue-100 text-blue-800 border-blue-200',
+                        'credit': 'bg-red-100 text-red-800 border-red-200',
+                        'mtn-momo': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                        'telecel-cash': 'bg-purple-100 text-purple-800 border-purple-200',
+                        'investment': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                        'asset': 'bg-teal-100 text-teal-800 border-teal-200',
+                        'debt': 'bg-orange-100 text-orange-800 border-orange-200'
+                    };
+
+                    const icon = typeIcons[account.type] || '💰';
+                    const colorClass = typeColors[account.type] || 'bg-gray-100 text-gray-800 border-gray-200';
+                    const balance = Number(account.balance || 0);
+                    const isNegative = balance < 0;
+
+                    return `
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 hover:shadow-md transition-shadow">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 ${colorClass} rounded-full flex items-center justify-center text-lg">
+                                        ${icon}
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">${account.name}</p>
+                                        <p class="text-sm text-gray-500 capitalize">${account.type.replace('-', ' ')}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-lg ${isNegative ? 'text-red-600' : 'text-gray-900'}">
+                                        ${currency}${balance.toFixed(2)}
+                                    </p>
+                                    <div class="flex space-x-2 mt-2">
+                                        <button onclick="editAccount('${account.id}')" class="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
+                                        <button onclick="deleteAccount('${account.id}')" class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function editAccount(accountId) {
+                const account = accounts.find(a => a.id === accountId);
+                if (!account) return;
+
+                // Populate modal with account data
+                document.getElementById('accountName').value = account.name;
+                document.getElementById('accountType').value = account.type;
+                document.getElementById('accountBalance').value = account.balance;
+
+                // Change button text and function
+                const button = document.querySelector('#accountModal button[onclick*="addAccount"]');
+                button.textContent = 'Update Account';
+                button.setAttribute('onclick', `updateAccount('${accountId}')`);
+
+                openAccountModal();
+            }
+
+            function updateAccount(accountId) {
+                const name = document.getElementById('accountName').value.trim();
+                const type = document.getElementById('accountType').value;
+                const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
+
+                if (!name) {
+                    alert('Please enter an account name');
+                    return;
+                }
+
+                const accountIndex = accounts.findIndex(a => a.id === accountId);
+                if (accountIndex === -1) return;
+
+                // Check if account name already exists (excluding current account)
+                if (accounts.some((acc, index) => index !== accountIndex && acc.name.toLowerCase() === name.toLowerCase())) {
+                    alert('An account with this name already exists');
+                    return;
+                }
+
+                accounts[accountIndex] = {
+                    ...accounts[accountIndex],
+                    name,
+                    type,
+                    balance
+                };
+
+                saveToFirebase();
+                closeAccountModal();
+                updateAccountSelectors();
+                renderAccounts();
+                updateFinancialPosition();
+                alert('Account updated successfully!');
+            }
+
+            function deleteAccount(accountId) {
+                if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) return;
+
+                accounts = accounts.filter(a => a.id !== accountId);
+                saveToFirebase();
+                updateAccountSelectors();
+                renderAccounts();
+                updateFinancialPosition();
+                alert('Account deleted successfully!');
             }
 
             // ============================================
@@ -1488,6 +1831,7 @@
                 saveToFirebase();
                 closeAssetModal();
                 renderAssets();
+                updateFinancialPosition();
                 alert('Asset added successfully!');
             }
 
@@ -1515,6 +1859,7 @@
                 saveToFirebase();
                 closeAssetModal();
                 renderAssets();
+                updateFinancialPosition();
                 alert('Asset updated successfully!');
             }
 
@@ -1528,7 +1873,218 @@
                 assets = assets.filter(a => a.id !== assetId);
                 saveToFirebase();
                 renderAssets();
+                updateFinancialPosition();
                 alert('Asset deleted successfully!');
+            }
+
+            function renderAnalytics() {
+                updateAnalytics();
+            }
+
+            function updateAnalytics() {
+                const type = document.getElementById('analyticsType').value;
+                const ctx = document.getElementById('analyticsChart').getContext('2d');
+                const summaryEl = document.getElementById('analyticsSummary');
+
+                // Destroy existing chart
+                if (analyticsChart) {
+                    analyticsChart.destroy();
+                }
+
+                let chartData = {};
+                let chartConfig = {};
+
+                if (type === 'category') {
+                    // Spending by category
+                    const categoryData = {};
+                    transactions.filter(t => t.type === 'expense').forEach(t => {
+                        const category = t.category || 'Uncategorized';
+                        categoryData[category] = (categoryData[category] || 0) + Math.abs(t.amount);
+                    });
+
+                    chartConfig = {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(categoryData),
+                            datasets: [{
+                                data: Object.values(categoryData),
+                                backgroundColor: [
+                                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+                                    '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Spending by Category'
+                                }
+                            }
+                        }
+                    };
+
+                    summaryEl.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-md p-4">
+                            <h3 class="text-lg font-semibold mb-3">Category Breakdown</h3>
+                            ${Object.entries(categoryData).map(([category, amount]) => `
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-gray-700">${category}</span>
+                                    <span class="font-semibold text-gray-900">${currency}${amount.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+
+                } else if (type === 'monthly') {
+                    // Monthly trend
+                    const monthlyData = {};
+                    transactions.forEach(t => {
+                        const date = new Date(t.date);
+                        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        if (!monthlyData[monthKey]) {
+                            monthlyData[monthKey] = { income: 0, expense: 0 };
+                        }
+                        if (t.type === 'income') {
+                            monthlyData[monthKey].income += t.amount;
+                        } else if (t.type === 'expense') {
+                            monthlyData[monthKey].expense += Math.abs(t.amount);
+                        }
+                    });
+
+                    const sortedMonths = Object.keys(monthlyData).sort();
+                    
+                    chartConfig = {
+                        type: 'line',
+                        data: {
+                            labels: sortedMonths.map(month => {
+                                const [year, monthNum] = month.split('-');
+                                return `${year}-${monthNum}`;
+                            }),
+                            datasets: [{
+                                label: 'Income',
+                                data: sortedMonths.map(month => monthlyData[month].income),
+                                borderColor: '#10B981',
+                                backgroundColor: '#10B98120',
+                                tension: 0.4
+                            }, {
+                                label: 'Expenses',
+                                data: sortedMonths.map(month => monthlyData[month].expense),
+                                borderColor: '#EF4444',
+                                backgroundColor: '#EF444420',
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Monthly Income vs Expenses'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return currency + value.toFixed(0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    summaryEl.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-md p-4">
+                            <h3 class="text-lg font-semibold mb-3">Monthly Summary</h3>
+                            ${sortedMonths.map(month => {
+                                const data = monthlyData[month];
+                                const net = data.income - data.expense;
+                                return `
+                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span class="text-gray-700">${month}</span>
+                                        <div class="text-right">
+                                            <div class="text-sm text-green-600">+${currency}${data.income.toFixed(2)}</div>
+                                            <div class="text-sm text-red-600">-${currency}${data.expense.toFixed(2)}</div>
+                                            <div class="font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                                ${net >= 0 ? '+' : ''}${currency}${net.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+
+                } else if (type === 'comparison') {
+                    // Income vs Expense comparison
+                    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                    const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                    
+                    chartConfig = {
+                        type: 'bar',
+                        data: {
+                            labels: ['Income', 'Expenses'],
+                            datasets: [{
+                                data: [totalIncome, totalExpense],
+                                backgroundColor: ['#10B981', '#EF4444'],
+                                borderColor: ['#059669', '#DC2626'],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Total Income vs Expenses'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return currency + value.toFixed(0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    const netIncome = totalIncome - totalExpense;
+                    summaryEl.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-md p-4">
+                            <h3 class="text-lg font-semibold mb-3">Financial Overview</h3>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-green-600">${currency}${totalIncome.toFixed(2)}</div>
+                                    <div class="text-sm text-gray-600">Total Income</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-red-600">${currency}${totalExpense.toFixed(2)}</div>
+                                    <div class="text-sm text-gray-600">Total Expenses</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-red-600'}">${netIncome >= 0 ? '+' : ''}${currency}${netIncome.toFixed(2)}</div>
+                                    <div class="text-sm text-gray-600">Net Income</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                analyticsChart = new Chart(ctx, chartConfig);
             }
 
             // End of script - ensure HTML is properly closed
