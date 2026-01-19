@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Icon Generator - Budget Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .icon-item { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+        canvas { border: 1px solid #ccc; margin: 10px 0; }
+        button { background: #4f46e5; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #3730a3; }
+    </style>
+</head>
+<body>
+    <h1>Budget Tracker PWA Icon Generator</h1>
+    <p>This tool generates the required PNG icons for your PWA from the SVG icon.</p>
+
+    <div class="icon-grid" id="iconGrid">
+        <!-- Icons will be generated here -->
+    </div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const iconGrid = document.getElementById('iconGrid');
+
+        sizes.forEach(size => {
+            const item = document.createElement('div');
+            item.className = 'icon-item';
+
+            item.innerHTML = `
+                <h3>${size}x${size}</h3>
+                <canvas id="canvas-${size}" width="${size}" height="${size}"></canvas>
+                <button onclick="downloadIcon(${size})">Download PNG</button>
+            `;
+
+            iconGrid.appendChild(item);
+
+            // Draw the icon
+            drawIcon(size);
+        });
+
+        function drawIcon(size) {
+            const canvas = document.getElementById(`canvas-${size}`);
+            const ctx = canvas.getContext('2d');
+
+            // Set background
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillRect(0, 0, size, size);
+
+            // Draw simple wallet icon
+            ctx.fillStyle = 'white';
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size * 0.3;
+
+            // Wallet body
+            ctx.fillRect(centerX - radius, centerY - radius * 0.6, radius * 2, radius * 1.2);
+
+            // Money symbol
+            ctx.font = `${size * 0.4}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('$', centerX, centerY + size * 0.15);
+        }
+
+        function downloadIcon(size) {
+            const canvas = document.getElementById(`canvas-${size}`);
+            const link = document.createElement('a');
+            link.download = `icon-${size}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>

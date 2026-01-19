@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget Tracker Pro - Cloud Sync</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Professional budget tracking app with cloud sync, analytics, and financial management">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Budget Tracker Pro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -104,6 +119,12 @@
                 <div id="syncStatus" class="text-xs opacity-75 mb-3 flex items-center gap-2">
                     <div class="w-2 h-2 bg-green-400 rounded-full"></div>
                     <span>Synced</span>
+                </div>
+
+                <!-- Auto-logout Status -->
+                <div id="autoLogoutStatus" class="text-xs opacity-75 flex items-center gap-2 hidden">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span>Auto-logout in 5 minutes of inactivity</span>
                 </div>
 
                 <!-- Account Selector -->
@@ -693,6 +714,231 @@
         // Initialize Firebase
         let app, auth, db, currentUser = null;
         
+        // ============================================
+        // PWA VARIABLES AND FUNCTIONS
+        // ============================================
+        let deferredPrompt;
+        
+        // PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallPrompt();
+        });
+        
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA was installed successfully');
+            hideInstallPrompt();
+        });
+        
+        function showInstallPrompt() {
+            // Only show if not already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) return;
+            
+            const installBanner = document.createElement('div');
+            installBanner.id = 'installBanner';
+            installBanner.className = 'fixed bottom-4 left-4 right-4 bg-indigo-600 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:w-96';
+            installBanner.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Install Budget Tracker</p>
+                            <p class="text-sm opacity-90">Add to home screen for quick access</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="hideInstallPrompt()" class="text-sm opacity-75 hover:opacity-100">Later</button>
+                        <button onclick="installPWA()" class="bg-white text-indigo-600 px-4 py-2 rounded text-sm font-semibold">Install</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(installBanner);
+        }
+        
+        function hideInstallPrompt() {
+            const banner = document.getElementById('installBanner');
+            if (banner) banner.remove();
+        }
+        
+        async function installPWA() {
+            if (!deferredPrompt) return;
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            } else {
+                console.log('User dismissed the install prompt');
+            }
+            
+            deferredPrompt = null;
+            hideInstallPrompt();
+        }
+        
+        function showUpdateNotification() {
+            const updateBanner = document.createElement('div');
+            updateBanner.id = 'updateBanner';
+            updateBanner.className = 'fixed top-4 left-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:w-96';
+            updateBanner.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Update Available</p>
+                            <p class="text-sm opacity-90">New version ready to install</p>
+                        </div>
+                    </div>
+                    <button onclick="updatePWA()" class="bg-white text-green-600 px-4 py-2 rounded text-sm font-semibold">Update</button>
+                </div>
+            `;
+            document.body.appendChild(updateBanner);
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                const banner = document.getElementById('updateBanner');
+                if (banner) banner.remove();
+            }, 10000);
+        }
+        
+        function updatePWA() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => {
+                        registration.update();
+                    });
+                });
+            }
+            const banner = document.getElementById('updateBanner');
+            if (banner) banner.remove();
+            window.location.reload();
+        }
+
+        // ============================================
+        // AUTO-LOGOUT FUNCTIONALITY
+        // ============================================
+        let autoLogoutTimer;
+        const AUTO_LOGOUT_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        function startAutoLogoutTimer() {
+            clearAutoLogoutTimer(); // Clear any existing timer
+
+            autoLogoutTimer = setTimeout(() => {
+                console.log('Auto-logout: 5 minutes of inactivity detected');
+                performAutoLogout();
+            }, AUTO_LOGOUT_TIME);
+        }
+
+        function clearAutoLogoutTimer() {
+            if (autoLogoutTimer) {
+                clearTimeout(autoLogoutTimer);
+                autoLogoutTimer = null;
+            }
+        }
+
+        function resetAutoLogoutTimer() {
+            if (currentUser) { // Only reset if user is logged in
+                startAutoLogoutTimer();
+            }
+        }
+
+        async function performAutoLogout() {
+            console.log('Performing automatic logout due to inactivity');
+            try {
+                await auth.signOut();
+                showAutoLogoutNotification();
+            } catch (error) {
+                console.error('Auto-logout failed:', error);
+            }
+        }
+
+        function showAutoLogoutNotification() {
+            // Create a notification banner
+            const notification = document.createElement('div');
+            notification.id = 'autoLogoutNotification';
+            notification.className = 'fixed top-4 left-4 right-4 bg-orange-500 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:w-96';
+            notification.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Auto Logout</p>
+                            <p class="text-sm opacity-90">You were logged out due to 5 minutes of inactivity</p>
+                        </div>
+                    </div>
+                    <button onclick="dismissAutoLogoutNotification()" class="text-white opacity-75 hover:opacity-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                dismissAutoLogoutNotification();
+            }, 5000);
+        }
+
+        function dismissAutoLogoutNotification() {
+            const notification = document.getElementById('autoLogoutNotification');
+            if (notification) {
+                notification.remove();
+            }
+        }
+
+        function setupActivityTracking() {
+            // List of events that indicate user activity
+            const activityEvents = [
+                'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'touchmove',
+                'click', 'keydown', 'wheel', 'contextmenu'
+            ];
+
+            // Throttled activity handler to avoid excessive timer resets
+            let activityTimeout;
+            function handleActivity() {
+                if (activityTimeout) return; // Throttle
+
+                activityTimeout = setTimeout(() => {
+                    resetAutoLogoutTimer();
+                    activityTimeout = null;
+                }, 100); // Reset timer at most every 100ms
+            }
+
+            // Add event listeners for all activity events
+            activityEvents.forEach(event => {
+                document.addEventListener(event, handleActivity, { passive: true });
+            });
+
+            // Also track visibility changes (tab switching)
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && currentUser) {
+                    resetAutoLogoutTimer();
+                }
+            });
+
+            // Track window focus
+            window.addEventListener('focus', () => {
+                if (currentUser) {
+                    resetAutoLogoutTimer();
+                }
+            });
+        }
+
         try {
             app = firebase.initializeApp(firebaseConfig);
             auth = firebase.auth();
@@ -734,11 +980,21 @@
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
                 document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('autoLogoutStatus').classList.remove('hidden');
+
+                // Start auto-logout functionality
+                setupActivityTracking();
+                startAutoLogoutTimer();
+
                 loadFirebaseData();
             } else {
                 currentUser = null;
                 document.getElementById('loginScreen').classList.remove('hidden');
                 document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('autoLogoutStatus').classList.add('hidden');
+
+                // Stop auto-logout functionality
+                clearAutoLogoutTimer();
             }
         });
 
@@ -815,6 +1071,7 @@
 
         async function logoutUser() {
             if (confirm('Are you sure you want to logout?')) {
+                clearAutoLogoutTimer(); // Clear the auto-logout timer
                 await auth.signOut();
             }
         }
@@ -890,6 +1147,31 @@
             updateAccountSelectors();
             renderTransactions();
             updateTotals();
+            
+            // Register Service Worker for PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        // New version available
+                                        showUpdateNotification();
+                                    }
+                                });
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            }
+            
             // Initialize currency select
             const currencySelect = document.getElementById('currencySelect');
             if (currencySelect) currencySelect.value = currency;
