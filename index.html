@@ -84,6 +84,9 @@ A professional budget tracking application with Firebase integration
                 <button onclick="loginUser()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg">
                     Sign In
                 </button>
+                <button onclick="showForgotPassword()" class="w-full text-indigo-600 text-sm hover:text-indigo-800 underline">
+                    Forgot Password?
+                </button>
                 <button onclick="showRegisterForm()" class="w-full bg-white text-indigo-600 border-2 border-indigo-600 py-3 rounded-lg font-semibold hover:bg-indigo-50">
                     Create Account
                 </button>
@@ -102,6 +105,20 @@ A professional budget tracking application with Firebase integration
                     Back to Login
                 </button>
                 <div id="registerError" class="text-red-600 text-sm text-center hidden"></div>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgotPasswordForm" class="space-y-4 hidden">
+                <p class="text-gray-600 text-sm text-center">Enter your email address and we'll send you a link to reset your password.</p>
+                <input type="email" id="forgotEmail" placeholder="Email" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <button onclick="resetPassword()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg">
+                    Send Reset Link
+                </button>
+                <button onclick="showLoginForm()" class="w-full bg-white text-gray-600 border-2 border-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-50">
+                    Back to Login
+                </button>
+                <div id="forgotError" class="text-red-600 text-sm text-center hidden"></div>
+                <div id="forgotSuccess" class="text-green-600 text-sm text-center hidden"></div>
             </div>
 
             <!-- Loading Spinner -->
@@ -300,6 +317,12 @@ A professional budget tracking application with Firebase integration
                     </svg>
                     <span>Assets</span>
                 </button>
+                <button onclick="switchTab('liabilities')" id="tabLiabilities" class="flex-1 py-3 px-2 flex flex-col items-center justify-center text-xs text-gray-600">
+                    <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <span>Liabilities</span>
+                </button>
                 <button onclick="switchTab('accounts')" id="tabAccounts" class="flex-1 py-3 px-2 flex flex-col items-center justify-center text-xs text-gray-600">
                     <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
@@ -328,6 +351,14 @@ A professional budget tracking application with Firebase integration
                     </div>
                     <div class="flex gap-2 items-center">
                         <input type="text" id="searchInput" placeholder="Search transactions..." class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="handleSearch()">
+                        <div class="flex items-center gap-1">
+                            <label for="dateFrom" class="text-xs text-gray-600">From:</label>
+                            <input type="date" id="dateFrom" class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <label for="dateTo" class="text-xs text-gray-600">To:</label>
+                            <input type="date" id="dateTo" class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
+                        </div>
                         <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add</button>
                     </div>
                 </div>
@@ -375,7 +406,7 @@ A professional budget tracking application with Firebase integration
                 </div>
 
                 <!-- Asset Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
                         <div class="flex items-center justify-between mb-2">
                             <div class="text-sm opacity-90">Total Assets</div>
@@ -406,6 +437,16 @@ A professional budget tracking application with Firebase integration
                         <p id="investmentsValue" class="text-2xl font-bold">GHS0.00</p>
                         <div class="text-xs opacity-75 mt-1">Stocks & investments</div>
                     </div>
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Loans Given</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                        <p id="loansValue" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">Money lent to others</div>
+                    </div>
                 </div>
 
                 <!-- Add Asset Button -->
@@ -418,6 +459,69 @@ A professional budget tracking application with Firebase integration
 
                 <!-- Assets List -->
                 <div id="assetsList"></div>
+            </div>
+
+            <!-- Liabilities Tab -->
+            <div id="contentLiabilities" class="tab-content hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Liability Manager</h2>
+                    <p class="text-gray-600">Track your debts, loans, and credit facilities</p>
+                </div>
+
+                <!-- Liability Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Total Liabilities</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <p id="liabilitiesTabTotalValue" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">All debts combined</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Bank Loans</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                        </div>
+                        <p id="bankLoansValue" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">Loans from banks</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Credit Cards</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                            </svg>
+                        </div>
+                        <p id="creditCardsValue" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">Credit card balances</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Personal Loans</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <p id="personalLoansValue" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">Loans from friends/family</div>
+                    </div>
+                </div>
+
+                <!-- Add Liability Button -->
+                <div class="mb-4 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">Your Liabilities</h3>
+                    <button onclick="openLiabilityModal()" class="bg-gradient-to-r from-red-600 to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-shadow">
+                        + Add Liability
+                    </button>
+                </div>
+
+                <!-- Liabilities List -->
+                <div id="liabilitiesList"></div>
             </div>
 
             <!-- Accounts Tab -->
@@ -637,6 +741,7 @@ A professional budget tracking application with Firebase integration
                         <option value="vehicle">🚗 Vehicle</option>
                         <option value="investment">📈 Investment</option>
                         <option value="jewelry">💍 Jewelry</option>
+                        <option value="loan">💰 Loan Given</option>
                         <option value="other">📦 Other</option>
                     </select>
                 </div>
@@ -661,6 +766,74 @@ A professional budget tracking application with Firebase integration
 
                 <button id="assetSubmitBtn" onclick="addAsset()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
                     Add Asset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liability Modal -->
+    <div id="liabilityModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 my-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="liabilityModalTitle" class="text-2xl font-bold text-gray-800">Add New Liability</h2>
+                <button onclick="closeLiabilityModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form Fields -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Liability Name</label>
+                    <input type="text" id="liabilityName" placeholder="e.g., Bank Loan, Credit Card, Friend Loan" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                    <select id="liabilityType" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                        <option value="bank-loan">🏦 Bank Loan</option>
+                        <option value="credit-card">💳 Credit Card</option>
+                        <option value="personal-loan">👥 Personal Loan</option>
+                        <option value="mortgage">🏠 Mortgage</option>
+                        <option value="other">📋 Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Balance</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">GHS</span>
+                        <input type="number" id="liabilityAmount" step="0.01" placeholder="0.00" class="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Interest Rate (Optional)</label>
+                    <div class="relative">
+                        <input type="number" id="liabilityInterestRate" step="0.01" placeholder="0.00" class="w-full pr-8 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="liabilityStartDate" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Due Date (Optional)</label>
+                    <input type="date" id="liabilityDueDate" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                    <textarea id="liabilityDescription" rows="3" placeholder="Additional details about the liability..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
+                </div>
+
+                <button id="liabilitySubmitBtn" onclick="addLiability()" class="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
+                    Add Liability
                 </button>
             </div>
         </div>
@@ -913,6 +1086,7 @@ A professional budget tracking application with Firebase integration
         let recurring = [];
         let reminders = [];
         let assets = [];
+        let liabilities = [];
         let currentFilter = 'all';
         let currentType = 'expense';
         let currentTab = 'transactions';
@@ -921,7 +1095,7 @@ A professional budget tracking application with Firebase integration
         let analyticsChart = null;
 
         const categories = {
-            income: ['Salary', 'Freelance', 'Business', 'Investment', 'Gift', 'Other'],
+            income: ['Salary', 'Freelance', 'Business', 'Investment', 'Gift', 'Loan Repayment', 'Other'],
             expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Education', 'Other']
         };
 
@@ -947,19 +1121,95 @@ A professional budget tracking application with Firebase integration
                 document.getElementById('mainApp').classList.add('hidden');
                 document.getElementById('autoLogoutStatus').classList.add('hidden');
 
+                // Ensure login form is shown and loading is hidden
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('authLoading').classList.add('hidden');
+
                 // Stop auto-logout functionality
                 clearAutoLogoutTimer();
             }
         });
 
+        // Add Enter key listeners for login and register forms
+        function setupFormListeners() {
+            // Login form
+            const loginEmail = document.getElementById('loginEmail');
+            const loginPassword = document.getElementById('loginPassword');
+            if (loginEmail) {
+                loginEmail.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        loginUser();
+                    }
+                });
+            }
+            if (loginPassword) {
+                loginPassword.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        loginUser();
+                    }
+                });
+            }
+            
+            // Register form
+            const registerEmail = document.getElementById('registerEmail');
+            const registerPassword = document.getElementById('registerPassword');
+            const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+            if (registerEmail) {
+                registerEmail.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        registerUser();
+                    }
+                });
+            }
+            if (registerPassword) {
+                registerPassword.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        registerUser();
+                    }
+                });
+            }
+            if (registerPasswordConfirm) {
+                registerPasswordConfirm.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        registerUser();
+                    }
+                });
+            }
+            
+            // Forgot password form
+            const forgotEmail = document.getElementById('forgotEmail');
+            if (forgotEmail) {
+                forgotEmail.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        resetPassword();
+                    }
+                });
+            }
+        }
+
+        // Initialize form listeners when page loads
+        setupFormListeners();
+
         function showLoginForm() {
             document.getElementById('loginForm').classList.remove('hidden');
             document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('forgotPasswordForm').classList.add('hidden');
         }
 
         function showRegisterForm() {
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('forgotPasswordForm').classList.add('hidden');
+        }
+
+        function showForgotPassword() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('forgotPasswordForm').classList.remove('hidden');
+            // Clear any previous messages
+            document.getElementById('forgotError').classList.add('hidden');
+            document.getElementById('forgotSuccess').classList.add('hidden');
         }
 
         async function loginUser() {
@@ -983,6 +1233,41 @@ A professional budget tracking application with Firebase integration
                 errorEl.classList.remove('hidden');
                 document.getElementById('loginForm').classList.remove('hidden');
                 document.getElementById('authLoading').classList.add('hidden');
+            }
+        }
+
+        async function resetPassword() {
+            const email = document.getElementById('forgotEmail').value;
+            const errorEl = document.getElementById('forgotError');
+            const successEl = document.getElementById('forgotSuccess');
+
+            if (!email) {
+                errorEl.textContent = 'Please enter your email address';
+                errorEl.classList.remove('hidden');
+                successEl.classList.add('hidden');
+                return;
+            }
+
+            // Clear previous messages
+            errorEl.classList.add('hidden');
+            successEl.classList.add('hidden');
+
+            // Show loading state
+            document.getElementById('forgotPasswordForm').querySelector('button').textContent = 'Sending...';
+            document.getElementById('forgotPasswordForm').querySelector('button').disabled = true;
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                successEl.textContent = 'Password reset email sent! Check your inbox.';
+                successEl.classList.remove('hidden');
+                document.getElementById('forgotEmail').value = '';
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+            } finally {
+                // Reset button
+                document.getElementById('forgotPasswordForm').querySelector('button').textContent = 'Send Reset Link';
+                document.getElementById('forgotPasswordForm').querySelector('button').disabled = false;
             }
         }
 
@@ -1025,8 +1310,22 @@ A professional budget tracking application with Firebase integration
 
         async function logoutUser() {
             if (confirm('Are you sure you want to logout?')) {
+                // Show loading state
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('authLoading').classList.remove('hidden');
+                
                 clearAutoLogoutTimer(); // Clear the auto-logout timer
-                await auth.signOut();
+                
+                try {
+                    await auth.signOut();
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    // If logout fails, show login form again
+                    document.getElementById('loginForm').classList.remove('hidden');
+                    document.getElementById('authLoading').classList.add('hidden');
+                    alert('Logout failed. Please try again.');
+                }
             }
         }
 
@@ -1057,11 +1356,12 @@ A professional budget tracking application with Firebase integration
                     recurring = data.recurring || [];
                     reminders = data.reminders || [];
                     assets = data.assets || [];
+                    liabilities = data.liabilities || [];
                     currency = data.currency || 'GHS';
                     
                     // Save to localStorage as backup
                     localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                        transactions, budgets, accounts, recurring, reminders, assets, currency
+                        transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                     }));
                     
                     // Recalculate account balances based on transactions to ensure accuracy
@@ -1086,7 +1386,7 @@ A professional budget tracking application with Firebase integration
             if (!currentUser) {
                 // Save to localStorage only
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
                 return;
             }
@@ -1101,13 +1401,14 @@ A professional budget tracking application with Firebase integration
                     recurring,
                     reminders,
                     assets,
+                    liabilities,
                     currency,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 // Also save to localStorage as backup
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
                 
                 setSyncStatus('Synced');
@@ -1116,7 +1417,7 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, currency
+                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
             }
         }
@@ -1131,6 +1432,7 @@ A professional budget tracking application with Firebase integration
                 recurring = data.recurring || [];
                 reminders = data.reminders || [];
                 assets = data.assets || [];
+                liabilities = data.liabilities || [];
                 currency = data.currency || 'GHS';
                 
                 // Recalculate account balances
@@ -1156,6 +1458,7 @@ A professional budget tracking application with Firebase integration
                 '• All recurring transactions\n' +
                 '• All reminders\n' +
                 '• All assets\n' +
+                '• All liabilities\n' +
                 '• All custom categories\n\n' +
                 'This action CANNOT be undone!\n\n' +
                 'Are you sure you want to continue?'
@@ -1182,6 +1485,7 @@ A professional budget tracking application with Firebase integration
                 recurring = [];
                 reminders = [];
                 assets = [];
+                liabilities = [];
                 currency = 'GHS';
 
                 // Reinitialize the app
@@ -1242,16 +1546,44 @@ A professional budget tracking application with Firebase integration
             });
         }
 
-        function updateBudgetSpent(category, amount) {
-            const budget = budgets.find(b => b.category === category);
-            if (budget) {
-                budget.spent = Number(budget.spent || 0) + amount;
-            }
+function reduceLoanAssets(repaymentAmount) {
+                const loanAssets = assets.filter(asset => asset.category === 'loan' && asset.value > 0);
+                if (loanAssets.length === 0) return;
+                
+                let totalLoanValue = loanAssets.reduce((sum, asset) => sum + Number(asset.value || 0), 0);
+                if (totalLoanValue <= 0) return;
+                
+                // Distribute repayment proportionally across all loans
+                let remainingRepayment = repaymentAmount;
+                
+                for (const asset of loanAssets) {
+                    if (remainingRepayment <= 0) break;
+                    
+                    const assetValue = Number(asset.value || 0);
+                    const proportion = assetValue / totalLoanValue;
+                    const repaymentForThisAsset = Math.min(assetValue, repaymentAmount * proportion);
+                    
+                    asset.value = Math.max(0, assetValue - repaymentForThisAsset);
+                    remainingRepayment -= repaymentForThisAsset;
+                    
+                    // If loan is fully repaid, we could optionally remove it or mark it as repaid
+                    if (asset.value <= 0) {
+                        // Keep the asset with value 0 to maintain history, or remove it
+                        // For now, keep it with 0 value
+                    }
+                }
+                
+                // Save changes
+                saveToFirebase();
+                renderAssets();
         }
 
-        // ============================================
-        // APP INITIALIZATION
-        // ============================================
+            function updateBudgetSpent(category, amount) {
+                const budget = budgets.find(b => b.category === category);
+                if (budget) {
+                    budget.spent = Number(budget.spent || 0) + amount;
+                }
+            }
         function init() {
             document.getElementById('date').valueAsDate = new Date();
             updateCategories();
@@ -1269,6 +1601,7 @@ A professional budget tracking application with Firebase integration
             // Initialize currency select
             const currencySelect = document.getElementById('currencySelect');
             if (currencySelect) currencySelect.value = currency;
+            
             // Initialize analytics select event listener
             const analyticsSelect = document.getElementById('analyticsType');
             if (analyticsSelect) {
@@ -1458,21 +1791,45 @@ A professional budget tracking application with Firebase integration
 
                 // Apply search filter
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-                if (searchTerm) {
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                
+                if (searchTerm || dateFrom || dateTo) {
                     filteredTransactions = filteredTransactions.filter(t => {
-                        const description = (t.description || '').toLowerCase();
-                        const category = (t.category || '').toLowerCase();
-                        const amount = (t.amount || '').toString();
-                        const accountName = t.account ? (accounts.find(a => a.id === t.account)?.name || '').toLowerCase() : '';
-                        const fromAccountName = t.fromAccount ? (accounts.find(a => a.id === t.fromAccount)?.name || '').toLowerCase() : '';
-                        const toAccountName = t.toAccount ? (accounts.find(a => a.id === t.toAccount)?.name || '').toLowerCase() : '';
+                        // Text search
+                        let matchesSearch = true;
+                        if (searchTerm) {
+                            const description = (t.description || '').toLowerCase();
+                            const category = (t.category || '').toLowerCase();
+                            const amount = (t.amount || '').toString();
+                            const accountName = t.account ? (accounts.find(a => a.id === t.account)?.name || '').toLowerCase() : '';
+                            const fromAccountName = t.fromAccount ? (accounts.find(a => a.id === t.fromAccount)?.name || '').toLowerCase() : '';
+                            const toAccountName = t.toAccount ? (accounts.find(a => a.id === t.toAccount)?.name || '').toLowerCase() : '';
+                            
+                            matchesSearch = description.includes(searchTerm) || 
+                                           category.includes(searchTerm) || 
+                                           amount.includes(searchTerm) ||
+                                           accountName.includes(searchTerm) ||
+                                           fromAccountName.includes(searchTerm) ||
+                                           toAccountName.includes(searchTerm);
+                        }
                         
-                        return description.includes(searchTerm) || 
-                               category.includes(searchTerm) || 
-                               amount.includes(searchTerm) ||
-                               accountName.includes(searchTerm) ||
-                               fromAccountName.includes(searchTerm) ||
-                               toAccountName.includes(searchTerm);
+                        // Date range filter
+                        let matchesDate = true;
+                        if (dateFrom || dateTo) {
+                            const transactionDate = new Date(t.date);
+                            if (dateFrom) {
+                                const fromDate = new Date(dateFrom);
+                                matchesDate = matchesDate && transactionDate >= fromDate;
+                            }
+                            if (dateTo) {
+                                const toDate = new Date(dateTo);
+                                toDate.setHours(23, 59, 59, 999); // Include the entire day
+                                matchesDate = matchesDate && transactionDate <= toDate;
+                            }
+                        }
+                        
+                        return matchesSearch && matchesDate;
                     });
                 }
 
@@ -1629,7 +1986,7 @@ A professional budget tracking application with Firebase integration
 
                 // Income Sources: Accounts with positive balances + Assets
                 const incomeSources = [];
-                const liabilities = [];
+                const liabilityItems = [];
 
                 // Add account balances
                 (accounts || []).forEach(account => {
@@ -1647,7 +2004,7 @@ A professional budget tracking application with Firebase integration
                         totalAssets += balance;
                     } else if (balance < 0) {
                         // Negative balance = Liability
-                        liabilities.push({
+                        liabilityItems.push({
                             name: account.name,
                             type: accountType,
                             amount: Math.abs(balance),
@@ -1671,9 +2028,23 @@ A professional budget tracking application with Firebase integration
                     }
                 });
 
+                // Add dedicated liabilities
+                (liabilities || []).forEach(liability => {
+                    const amount = Number(liability.amount || 0);
+                    if (amount > 0) {
+                        liabilityItems.push({
+                            name: liability.name,
+                            type: liability.type || 'liability',
+                            amount: amount,
+                            category: 'liability'
+                        });
+                        totalLiabilities += amount;
+                    }
+                });
+
                 // Sort by amount (highest first)
                 incomeSources.sort((a, b) => b.amount - a.amount);
-                liabilities.sort((a, b) => b.amount - a.amount);
+                liabilityItems.sort((a, b) => b.amount - a.amount);
 
                 // Get type icons and colors
                 const getTypeInfo = (type, category) => {
@@ -1683,9 +2054,19 @@ A professional budget tracking application with Firebase integration
                             'investment': { icon: '📈', color: 'text-purple-600' },
                             'vehicle': { icon: '🚗', color: 'text-blue-600' },
                             'jewelry': { icon: '💍', color: 'text-yellow-600' },
+                            'loan': { icon: '💰', color: 'text-orange-600' },
                             'other': { icon: '💰', color: 'text-gray-600' }
                         };
                         return assetIcons[type] || assetIcons['other'];
+                    } else if (category === 'liability') {
+                        const liabilityIcons = {
+                            'bank-loan': { icon: '🏦', color: 'text-blue-600' },
+                            'credit-card': { icon: '💳', color: 'text-red-600' },
+                            'personal-loan': { icon: '👥', color: 'text-green-600' },
+                            'mortgage': { icon: '🏠', color: 'text-purple-600' },
+                            'other': { icon: '💰', color: 'text-gray-600' }
+                        };
+                        return liabilityIcons[type] || liabilityIcons['other'];
                     } else {
                         const accountIcons = {
                             'cash': { icon: '💵', color: 'text-green-600' },
@@ -1721,8 +2102,8 @@ A professional budget tracking application with Firebase integration
                     '<p class="text-gray-500 text-center py-4">No income sources yet</p>';
 
                 // Render liabilities
-                liabilitiesEl.innerHTML = liabilities.length > 0 ?
-                    liabilities.map(liability => {
+                liabilitiesEl.innerHTML = liabilityItems.length > 0 ?
+                    liabilityItems.map(liability => {
                         const typeInfo = getTypeInfo(liability.type, liability.category);
                         return `
                             <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
@@ -1765,6 +2146,8 @@ A professional budget tracking application with Firebase integration
                     renderAccounts();
                 } else if (tab === 'assets') {
                     renderAssets();
+                } else if (tab === 'liabilities') {
+                    renderLiabilities();
                 } else if (tab === 'reminders') {
                     renderReminders();
                 } else if (tab === 'analytics') {
@@ -1896,6 +2279,11 @@ A professional budget tracking application with Firebase integration
                     if (selectedAccount) {
                         if (currentType === 'income') {
                             selectedAccount.balance = Number(selectedAccount.balance || 0) + amount;
+                            
+                            // If this is a loan repayment, reduce loan assets
+                            if (category === 'Loan Repayment') {
+                                reduceLoanAssets(amount);
+                            }
                         } else if (currentType === 'expense') {
                             selectedAccount.balance = Number(selectedAccount.balance || 0) - amount;
                             // Update budget spent
@@ -2532,6 +2920,7 @@ A professional budget tracking application with Firebase integration
                         'investment': 'bg-purple-100 text-purple-800 border-purple-200',
                         'vehicle': 'bg-blue-100 text-blue-800 border-blue-200',
                         'jewelry': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                        'loan': 'bg-orange-100 text-orange-800 border-orange-200',
                         'other': 'bg-gray-100 text-gray-800 border-gray-200'
                     };
 
@@ -2546,6 +2935,7 @@ A professional budget tracking application with Firebase integration
                                             ${asset.category === 'real-estate' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>' :
                                               asset.category === 'investment' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>' :
                                               asset.category === 'vehicle' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>' :
+                                              asset.category === 'loan' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>' :
                                               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>'}
                                         </svg>
                                     </div>
@@ -2555,7 +2945,9 @@ A professional budget tracking application with Firebase integration
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-bold text-lg text-gray-900">${currency}${Number(asset.value || 0).toFixed(2)}</p>
+                                    <p class="font-bold text-lg ${asset.category === 'loan' && asset.value <= 0 ? 'text-green-600' : 'text-gray-900'}">
+                                        ${asset.category === 'loan' && asset.value <= 0 ? 'Repaid' : currency + Number(asset.value || 0).toFixed(2)}
+                                    </p>
                                     <div class="flex space-x-2 mt-2">
                                         <button onclick="editAsset('${asset.id}')" class="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
                                         <button onclick="deleteAsset('${asset.id}')" class="text-red-600 hover:text-red-800 text-sm">Delete</button>
@@ -2573,25 +2965,32 @@ A professional budget tracking application with Firebase integration
                 let totalAssets = 0;
                 let realEstate = 0;
                 let investments = 0;
+                let loans = 0;
 
                 (assets || []).forEach(asset => {
                     const value = Number(asset.value || 0);
-                    totalAssets += value;
+                    if (value > 0) {  // Only count assets with positive value
+                        totalAssets += value;
 
-                    if (asset.category === 'real-estate') {
-                        realEstate += value;
-                    } else if (asset.category === 'investment') {
-                        investments += value;
+                        if (asset.category === 'real-estate') {
+                            realEstate += value;
+                        } else if (asset.category === 'investment') {
+                            investments += value;
+                        } else if (asset.category === 'loan') {
+                            loans += value;
+                        }
                     }
                 });
 
                 const totalEl = document.getElementById('totalAssetsValue');
                 const realEstateEl = document.getElementById('realEstateValue');
                 const investmentsEl = document.getElementById('investmentsValue');
+                const loansEl = document.getElementById('loansValue');
 
                 if (totalEl) totalEl.textContent = currency + totalAssets.toFixed(2);
                 if (realEstateEl) realEstateEl.textContent = currency + realEstate.toFixed(2);
                 if (investmentsEl) investmentsEl.textContent = currency + investments.toFixed(2);
+                if (loansEl) loansEl.textContent = currency + loans.toFixed(2);
             }
 
             function openAssetModal(assetId = null) {
@@ -2700,6 +3099,345 @@ A professional budget tracking application with Firebase integration
                 renderAssets();
                 updateFinancialPosition();
                 alert('Asset deleted successfully!');
+            }
+
+            // ============================================
+            // LIABILITY MANAGEMENT FUNCTIONS
+            // ============================================
+
+            function renderLiabilities() {
+                const el = document.getElementById('liabilitiesList');
+                if (!el) return;
+
+                if (!liabilities || liabilities.length === 0) {
+                    el.innerHTML = `
+                        <div class="text-center py-8">
+                            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <p class="text-gray-500 text-lg">No liabilities yet</p>
+                            <p class="text-gray-400 text-sm">Add your first liability to start tracking</p>
+                        </div>
+                    `;
+                    updateLiabilityTotals();
+                    return;
+                }
+
+                el.innerHTML = liabilities.map(liability => {
+                    const typeColors = {
+                        'bank-loan': 'bg-blue-100 text-blue-800 border-blue-200',
+                        'credit-card': 'bg-red-100 text-red-800 border-red-200',
+                        'personal-loan': 'bg-green-100 text-green-800 border-green-200',
+                        'mortgage': 'bg-purple-100 text-purple-800 border-purple-200',
+                        'other': 'bg-gray-100 text-gray-800 border-gray-200'
+                    };
+
+                    const colorClass = typeColors[liability.type] || typeColors['other'];
+
+                    return `
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 hover:shadow-md transition-shadow">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 ${colorClass} rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            ${liability.type === 'bank-loan' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>' :
+                                              liability.type === 'credit-card' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>' :
+                                              liability.type === 'personal-loan' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>' :
+                                              liability.type === 'mortgage' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>' :
+                                              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>'}
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">${liability.name}</p>
+                                        <p class="text-sm text-gray-500 capitalize">${liability.type.replace('-', ' ')} • ${liability.startDate ? new Date(liability.startDate).toLocaleDateString() : ''}</p>
+                                        ${liability.interestRate ? `<p class="text-xs text-orange-600">${liability.interestRate}% interest</p>` : ''}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-lg ${liability.amount <= 0 ? 'text-green-600' : 'text-red-600'}">
+                                        ${liability.amount <= 0 ? 'Paid Off' : currency + Number(liability.amount || 0).toFixed(2)}
+                                    </p>
+                                    <div class="flex space-x-2 mt-2">
+                                        <button onclick="makeLiabilityPayment('${liability.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium">Pay</button>
+                                        <button onclick="editLiability('${liability.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm font-medium">Edit</button>
+                                        <button onclick="deleteLiability('${liability.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium">Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                updateLiabilityTotals();
+            }
+
+            function updateLiabilityTotals() {
+                let totalLiabilities = 0;
+                let bankLoans = 0;
+                let creditCards = 0;
+                let personalLoans = 0;
+
+                (liabilities || []).forEach(liability => {
+                    const amount = Number(liability.amount || 0);
+                    if (amount > 0) {
+                        totalLiabilities += amount;
+
+                        if (liability.type === 'bank-loan' || liability.type === 'mortgage') {
+                            bankLoans += amount;
+                        } else if (liability.type === 'credit-card') {
+                            creditCards += amount;
+                        } else if (liability.type === 'personal-loan') {
+                            personalLoans += amount;
+                        }
+                    }
+                });
+
+                const totalEl = document.getElementById('liabilitiesTabTotalValue');
+                const bankLoansEl = document.getElementById('bankLoansValue');
+                const creditCardsEl = document.getElementById('creditCardsValue');
+                const personalLoansEl = document.getElementById('personalLoansValue');
+
+                if (totalEl) totalEl.textContent = currency + totalLiabilities.toFixed(2);
+                if (bankLoansEl) bankLoansEl.textContent = currency + bankLoans.toFixed(2);
+                if (creditCardsEl) creditCardsEl.textContent = currency + creditCards.toFixed(2);
+                if (personalLoansEl) personalLoansEl.textContent = currency + personalLoans.toFixed(2);
+            }
+
+            function openLiabilityModal(liabilityId = null) {
+                const modal = document.getElementById('liabilityModal');
+                if (!modal) return;
+
+                modal.classList.remove('hidden');
+
+                if (liabilityId) {
+                    // Edit mode
+                    const liability = liabilities.find(l => l.id === liabilityId);
+                    if (liability) {
+                        document.getElementById('liabilityName').value = liability.name || '';
+                        document.getElementById('liabilityType').value = liability.type || 'bank-loan';
+                        document.getElementById('liabilityAmount').value = liability.amount || '';
+                        document.getElementById('liabilityInterestRate').value = liability.interestRate || '';
+                        document.getElementById('liabilityStartDate').value = liability.startDate || '';
+                        document.getElementById('liabilityDueDate').value = liability.dueDate || '';
+                        document.getElementById('liabilityDescription').value = liability.description || '';
+                        document.getElementById('liabilityModalTitle').textContent = 'Edit Liability';
+                        document.getElementById('liabilitySubmitBtn').textContent = 'Update Liability';
+                        document.getElementById('liabilitySubmitBtn').onclick = () => updateLiability(liabilityId);
+                    }
+                } else {
+                    // Add mode
+                    document.getElementById('liabilityName').value = '';
+                    document.getElementById('liabilityType').value = 'bank-loan';
+                    document.getElementById('liabilityAmount').value = '';
+                    document.getElementById('liabilityInterestRate').value = '';
+                    document.getElementById('liabilityStartDate').value = '';
+                    document.getElementById('liabilityDueDate').value = '';
+                    document.getElementById('liabilityDescription').value = '';
+                    document.getElementById('liabilityModalTitle').textContent = 'Add New Liability';
+                    document.getElementById('liabilitySubmitBtn').textContent = 'Add Liability';
+                    document.getElementById('liabilitySubmitBtn').onclick = () => addLiability();
+                }
+            }
+
+            function closeLiabilityModal() {
+                const modal = document.getElementById('liabilityModal');
+                if (modal) modal.classList.add('hidden');
+            }
+
+            function addLiability() {
+                const name = document.getElementById('liabilityName').value.trim();
+                const type = document.getElementById('liabilityType').value;
+                const amount = parseFloat(document.getElementById('liabilityAmount').value) || 0;
+                const interestRate = parseFloat(document.getElementById('liabilityInterestRate').value) || 0;
+                const startDate = document.getElementById('liabilityStartDate').value;
+                const dueDate = document.getElementById('liabilityDueDate').value;
+                const description = document.getElementById('liabilityDescription').value.trim();
+
+                if (!name || amount <= 0) {
+                    alert('Please enter a liability name and amount.');
+                    return;
+                }
+
+                const liability = {
+                    id: Date.now().toString(),
+                    name,
+                    type,
+                    amount,
+                    interestRate,
+                    startDate,
+                    dueDate,
+                    description,
+                    createdAt: new Date().toISOString()
+                };
+
+                liabilities.push(liability);
+                saveToFirebase();
+                renderLiabilities();
+                updateFinancialPosition();
+                closeLiabilityModal();
+                alert('Liability added successfully!');
+            }
+
+            function updateLiability(liabilityId) {
+                const liability = liabilities.find(l => l.id === liabilityId);
+                if (!liability) return;
+
+                const name = document.getElementById('liabilityName').value.trim();
+                const type = document.getElementById('liabilityType').value;
+                const amount = parseFloat(document.getElementById('liabilityAmount').value) || 0;
+                const interestRate = parseFloat(document.getElementById('liabilityInterestRate').value) || 0;
+                const startDate = document.getElementById('liabilityStartDate').value;
+                const dueDate = document.getElementById('liabilityDueDate').value;
+                const description = document.getElementById('liabilityDescription').value.trim();
+
+                if (!name || amount < 0) {
+                    alert('Please enter a valid liability name and amount.');
+                    return;
+                }
+
+                liability.name = name;
+                liability.type = type;
+                liability.amount = amount;
+                liability.interestRate = interestRate;
+                liability.startDate = startDate;
+                liability.dueDate = dueDate;
+                liability.description = description;
+
+                saveToFirebase();
+                renderLiabilities();
+                updateFinancialPosition();
+                closeLiabilityModal();
+                alert('Liability updated successfully!');
+            }
+
+            function deleteLiability(liabilityId) {
+                if (!confirm('Are you sure you want to delete this liability?')) return;
+
+                liabilities = liabilities.filter(l => l.id !== liabilityId);
+                saveToFirebase();
+                renderLiabilities();
+                updateFinancialPosition();
+                alert('Liability deleted successfully!');
+            }
+
+            function makeLiabilityPayment(liabilityId) {
+                const liability = liabilities.find(l => l.id === liabilityId);
+                if (!liability) return;
+
+                // Create payment modal HTML
+                const paymentModal = document.createElement('div');
+                paymentModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                paymentModal.innerHTML = `
+                    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Make Payment</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-2">Paying towards: <strong>${liability.name}</strong></p>
+                                <p class="text-sm text-gray-600 mb-4">Current balance: <strong>${currency}${liability.amount.toFixed(2)}</strong></p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Amount</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">${currency}</span>
+                                    <input type="number" id="paymentAmount" step="0.01" placeholder="0.00" class="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                                <select id="paymentAccount" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                    ${accounts.map(account => `<option value="${account.id}">${account.name} (${account.type})</option>`).join('')}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date</label>
+                                <input type="date" id="paymentDate" value="${new Date().toISOString().split('T')[0]}" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                                <input type="text" id="paymentDescription" placeholder="e.g., Monthly payment, Extra payment" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                            </div>
+
+                            <button onclick="processLiabilityPayment('${liabilityId}')" class="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
+                                Record Payment
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(paymentModal);
+            }
+
+            function processLiabilityPayment(liabilityId) {
+                const liability = liabilities.find(l => l.id === liabilityId);
+                if (!liability) return;
+
+                const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+                const paymentAccount = document.getElementById('paymentAccount').value;
+                const paymentDate = document.getElementById('paymentDate').value;
+                const paymentDescription = document.getElementById('paymentDescription').value.trim();
+
+                if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                    alert('Please enter a valid payment amount.');
+                    return;
+                }
+
+                if (paymentAmount > liability.amount) {
+                    alert('Payment amount cannot exceed the current balance.');
+                    return;
+                }
+
+                // Reduce the liability amount
+                liability.amount -= paymentAmount;
+
+                // Add a transaction record for the payment
+                const transaction = {
+                    id: Date.now().toString(),
+                    type: 'expense',
+                    category: 'Debt Payment',
+                    amount: -paymentAmount,
+                    account: paymentAccount,
+                    description: paymentDescription || `Payment towards ${liability.name}`,
+                    date: paymentDate,
+                    liabilityId: liabilityId
+                };
+
+                transactions.push(transaction);
+
+                // Update account balance
+                const account = accounts.find(a => a.id === paymentAccount);
+                if (account) {
+                    console.log(`Account '${account.name}' balance BEFORE payment: ${account.balance}`);
+                    console.log(`Payment amount: ${paymentAmount}`);
+                    account.balance -= paymentAmount;
+                    console.log(`Account '${account.name}' balance AFTER payment: ${account.balance}`);
+                }
+
+                saveToFirebase();
+                // Re-render liabilities and other sections with a slight delay
+                // to ensure the DOM is ready after modal removal.
+                setTimeout(() => {
+                    renderLiabilities();
+                    renderTransactions();
+                    renderAccounts();
+                    updateFinancialPosition();
+                }, 50);
+
+                // Close modal
+                document.querySelector('.fixed').remove();
+
+                alert(`Payment of ${currency}${paymentAmount.toFixed(2)} recorded successfully!`);
             }
 
             function renderAnalytics() {
