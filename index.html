@@ -16,6 +16,7 @@ A professional budget tracking application with Firebase integration
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -26,10 +27,18 @@ A professional budget tracking application with Firebase integration
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         
         /* Prevent login screen flash on page load */
-        #loginScreen { display: none; }
-        #mainApp { display: none; }
-        body.auth-ready #loginScreen,
-        body.auth-ready #mainApp { display: block; }
+        #loginScreen,
+        #mainApp {
+            display: none !important;
+        }
+        
+        body.auth-ready #loginScreen.show-login {
+            display: block !important;
+        }
+        
+        body.auth-ready #mainApp.show-app {
+            display: block !important;
+        }
         
         .tab-active { color: #4f46e5; font-weight: 600; }
         .tab-active svg { stroke: #4f46e5; }
@@ -98,7 +107,7 @@ A professional budget tracking application with Firebase integration
     </div>
 
     <!-- Login Screen -->
-    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div id="loginScreen" class="fixed inset-0 flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -286,13 +295,18 @@ A professional budget tracking application with Firebase integration
 
                         <!-- Liabilities -->
                         <div class="bg-white rounded-xl shadow-md p-6">
-                            <div class="flex items-center mb-4">
-                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-lg font-semibold text-gray-800">Liabilities</h4>
                                 </div>
-                                <h4 class="text-lg font-semibold text-gray-800">Liabilities</h4>
+                                <button onclick="showLiabilitiesBreakdown()" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                    View Details →
+                                </button>
                             </div>
                             <div id="liabilitiesList" class="space-y-3">
                                 <!-- Liabilities will be populated here -->
@@ -577,8 +591,8 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
-    <!-- Floating Action Button -->
-    <button onclick="openTransactionModal()" class="fixed bottom-20 md:bottom-6 right-4 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40">
+    <!-- Floating Action Button - Only show when logged in -->
+    <button id="fabButton" onclick="openTransactionModal()" class="hidden fixed bottom-20 md:bottom-6 right-4 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40">
         <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
@@ -666,8 +680,8 @@ A professional budget tracking application with Firebase integration
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                    <input type="date" id="date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                    <input type="datetime-local" id="date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
 
                 <div>
@@ -881,7 +895,7 @@ A professional budget tracking application with Firebase integration
             <div class="space-y-3">
                 <input type="text" id="reminderTitle" placeholder="Bill Name (e.g., Electricity, Rent)" class="w-full px-4 py-3 border rounded-lg">
                 <input type="number" id="reminderAmount" step="0.01" placeholder="Expected Amount" class="w-full px-4 py-3 border rounded-lg">
-                <input type="date" id="reminderDate" class="w-full px-4 py-3 border rounded-lg">
+                <input type="datetime-local" id="reminderDate" class="w-full px-4 py-3 border rounded-lg">
                 <select id="reminderFrequency" class="w-full px-4 py-3 border rounded-lg">
                     <option value="once">One-time</option>
                     <option value="daily">Daily</option>
@@ -890,6 +904,24 @@ A professional budget tracking application with Firebase integration
                     <option value="yearly">Yearly</option>
                 </select>
                 <button onclick="addReminder()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">Add Reminder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liabilities Breakdown Modal -->
+    <div id="liabilitiesBreakdownModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-2xl w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Liabilities Breakdown</h2>
+                <button onclick="closeLiabilitiesBreakdown()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="breakdownContent" class="space-y-4">
+                <!-- Content will be populated by JavaScript -->
             </div>
         </div>
     </div>
@@ -912,6 +944,60 @@ A professional budget tracking application with Firebase integration
                         <option value="CAD">CAD - Canadian Dollar</option>
                         <option value="AUD">AUD - Australian Dollar</option>
                     </select>
+                </div>
+                
+                <!-- Email Notifications -->
+                <div class="border-t pt-4">
+                    <h3 class="text-lg font-semibold mb-3">Email Notifications</h3>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <p class="text-sm text-blue-800">
+                            <strong>📧 Daily Transaction Summaries</strong><br>
+                            Receive email reports at 6 AM and 6 PM with all transactions made that day.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="enableEmailNotifications" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" onchange="toggleEmailNotifications()">
+                            <span class="ml-2 text-sm text-gray-700">Enable email notifications</span>
+                        </label>
+                    </div>
+                    
+                    <div id="emailNotificationSettings" class="hidden space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Notification Email</label>
+                            <input type="email" id="notificationEmail" placeholder="your.email@example.com" class="w-full px-4 py-3 border rounded-lg text-sm">
+                            <p class="text-xs text-gray-500 mt-1">This email will receive transaction summaries</p>
+                        </div>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p class="text-xs text-yellow-800">
+                                ⚠️ <strong>Setup Required:</strong> To use email notifications, you need to:
+                                <ol class="list-decimal ml-4 mt-1">
+                                    <li>Create a free account at <a href="https://www.emailjs.com" target="_blank" class="underline">EmailJS.com</a></li>
+                                    <li>Get your Public Key, Service ID, and Template ID</li>
+                                    <li>Enter them in the fields below</li>
+                                </ol>
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">EmailJS Public Key</label>
+                            <input type="text" id="emailjsPublicKey" placeholder="Your EmailJS Public Key" class="w-full px-4 py-3 border rounded-lg text-sm">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">EmailJS Service ID</label>
+                            <input type="text" id="emailjsServiceId" placeholder="Your EmailJS Service ID" class="w-full px-4 py-3 border rounded-lg text-sm">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">EmailJS Template ID</label>
+                            <input type="text" id="emailjsTemplateId" placeholder="Your EmailJS Template ID" class="w-full px-4 py-3 border rounded-lg text-sm">
+                        </div>
+                        
+                        <button onclick="testEmailNotification()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700">Send Test Email</button>
+                    </div>
                 </div>
 
                 <!-- Category Management -->
@@ -1126,6 +1212,17 @@ A professional budget tracking application with Firebase integration
         let currentAccount = 'default';
         let currency = 'GHS';
         let analyticsChart = null;
+        
+        // Email notification settings
+        let emailNotifications = {
+            enabled: false,
+            email: '',
+            emailjsPublicKey: '',
+            emailjsServiceId: '',
+            emailjsTemplateId: '',
+            lastNotificationDate: null,
+            pendingTransactions: []
+        };
 
         const categories = {
             income: ['Salary', 'Freelance', 'Business', 'Investment', 'Gift', 'Loan Repayment', 'Other'],
@@ -1141,8 +1238,9 @@ A professional budget tracking application with Firebase integration
             
             if (user) {
                 currentUser = user;
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('loginScreen').classList.remove('show-login');
+                document.getElementById('mainApp').classList.add('show-app');
+                document.getElementById('fabButton').classList.remove('hidden'); // Show FAB button
                 document.getElementById('userEmail').textContent = user.email;
                 document.getElementById('autoLogoutStatus').classList.remove('hidden');
 
@@ -1153,8 +1251,9 @@ A professional budget tracking application with Firebase integration
                 loadFirebaseData();
             } else {
                 currentUser = null;
-                document.getElementById('loginScreen').classList.remove('hidden');
-                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginScreen').classList.add('show-login');
+                document.getElementById('mainApp').classList.remove('show-app');
+                document.getElementById('fabButton').classList.add('hidden'); // Hide FAB button
                 document.getElementById('autoLogoutStatus').classList.add('hidden');
 
                 // Ensure login form is shown and loading is hidden
@@ -1480,67 +1579,81 @@ A professional budget tracking application with Firebase integration
         }
 
         async function clearAllData() {
-            if (!currentUser) {
-                alert('Please log in first');
-                return;
-            }
+        if (!currentUser) {
+        alert('Please log in first');
+        return;
+        }
 
-            const confirmDelete = confirm(
-                '⚠️ WARNING: This will permanently delete ALL your data!\n\n' +
-                'This includes:\n' +
-                '• All transactions (income & expenses)\n' +
-                '• All budgets and budget history\n' +
-                '• All accounts and balances\n' +
-                '• All recurring transactions\n' +
-                '• All reminders\n' +
-                '• All assets\n' +
-                '• All liabilities\n' +
-                '• All custom categories\n\n' +
-                'This action CANNOT be undone!\n\n' +
-                'Are you sure you want to continue?'
-            );
+        const confirmDelete = confirm(
+        '⚠️ WARNING: This will permanently delete ALL your data!\n\n' +
+        'This includes:\n' +
+        '• All transactions (income & expenses)\n' +
+        '• All budgets and budget history\n' +
+        '• All accounts and balances\n' +
+        '• All recurring transactions\n' +
+        '• All reminders\n' +
+        '• All assets\n' +
+        '• All liabilities\n' +
+        '• All custom categories\n\n' +
+        'This action CANNOT be undone!\n\n' +
+        'Are you sure you want to continue?'
+        );
 
-            if (!confirmDelete) return;
+        if (!confirmDelete) return;
 
-            const finalConfirm = confirm('FINAL WARNING: Are you absolutely sure? Type "YES" to confirm.');
-            if (finalConfirm !== true) return;
+        const finalConfirm = confirm('FINAL WARNING: This will delete EVERYTHING from both your device and the cloud. Are you absolutely sure?');
+        if (!finalConfirm) return;
 
-            try {
-                setSyncStatus('Deleting data...');
+        try {
+        setSyncStatus('Deleting data...');
 
-                // Delete Firebase document
-                await db.collection('users').doc(currentUser.uid).delete();
+        // Delete Firebase document
+        await db.collection('users').doc(currentUser.uid).delete();
 
-                // Clear localStorage
-                localStorage.removeItem('budgetTracker_customCategories');
+        // Clear localStorage
+        localStorage.removeItem('budgetTracker_customCategories');
+                    localStorage.removeItem('budgetTracker_backup');
+        localStorage.removeItem('emailNotifications');
 
-                // Reset all in-memory data to defaults
-                transactions = [];
-                budgets = [];
-                accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
-                recurring = [];
-                reminders = [];
-                assets = [];
-                liabilities = [];
-                currency = 'GHS';
+        // Reset all in-memory data to defaults
+        transactions = [];
+        budgets = [];
+        accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+        recurring = [];
+        reminders = [];
+        assets = [];
+                    liabilities = [];
+        currency = 'GHS';
+        emailNotifications = {
+            enabled: false,
+                        email: '',
+            emailjsPublicKey: '',
+            emailjsServiceId: '',
+            emailjsTemplateId: '',
+                        lastNotificationDate: null,
+            pendingTransactions: []
+        };
 
-                // Reinitialize the app
-                init();
+            // Save the empty state to Firebase
+        await saveToFirebase();
+
+        // Reinitialize the app
+            init();
                 updateCategoriesDisplay();
 
-                setSyncStatus('All data cleared');
-                
-                alert('✅ All data has been successfully deleted!\n\nYou can now start fresh with new entries.');
+                    setSyncStatus('All data cleared');
+                    
+                    alert('✅ All data has been successfully deleted from both your device and the cloud!\n\nYou can now start fresh with new entries.');
 
-                // Close settings modal
-                closeSettingsModal();
+                    // Close settings modal
+                    closeSettingsModal();
 
-            } catch (error) {
-                console.error('Clear data error:', error);
-                setSyncStatus('Error clearing data', true);
-                alert('❌ Error clearing data. Please try again.');
+                } catch (error) {
+                    console.error('Clear data error:', error);
+                    setSyncStatus('Error clearing data', true);
+                    alert('❌ Error clearing data. Please try again.\n\nError: ' + error.message);
+                }
             }
-        }
 
         function recalculateAccountBalances() {
             // Reset all account balances to 0
@@ -1621,7 +1734,16 @@ function reduceLoanAssets(repaymentAmount) {
                 }
             }
         function init() {
-            document.getElementById('date').valueAsDate = new Date();
+            // Set current date and time
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+            document.getElementById('date').value = dateTimeString;
+            
             updateCategories();
             updateAccountSelectors();
             renderTransactions();
@@ -1654,6 +1776,9 @@ function reduceLoanAssets(repaymentAmount) {
                     day: 'numeric'
                 });
             }
+            
+            // Start email notification scheduler
+            startEmailNotificationScheduler();
         }
 
         // ============================================
@@ -1772,6 +1897,15 @@ function reduceLoanAssets(repaymentAmount) {
                         statusColor = 'bg-yellow-100 text-yellow-800';
                         statusText = 'Due Soon';
                     }
+                    
+                    // Format date and time
+                    const formatDateTime = (dateString) => {
+                        if (!dateString) return '';
+                        const date = new Date(dateString);
+                        const dateOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const timeOptions = { hour: '2-digit', minute: '2-digit' };
+                        return `${date.toLocaleDateString('en-US', dateOptions)} at ${date.toLocaleTimeString('en-US', timeOptions)}`;
+                    };
 
                     return `
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
@@ -1784,7 +1918,7 @@ function reduceLoanAssets(repaymentAmount) {
                                     </div>
                                     <div>
                                         <p class="font-medium text-gray-900">${reminder.title}</p>
-                                        <p class="text-sm text-gray-500 capitalize">${reminder.frequency} • ${reminderDate.toLocaleDateString()}</p>
+                                        <p class="text-sm text-gray-500 capitalize">${reminder.frequency} • ${formatDateTime(reminder.date)}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">
@@ -1873,6 +2007,15 @@ function reduceLoanAssets(repaymentAmount) {
                 filteredTransactions.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
                 el.innerHTML = filteredTransactions.map(t => {
+                    // Format date and time
+                    const formatDateTime = (dateString) => {
+                        if (!dateString) return '';
+                        const date = new Date(dateString);
+                        const dateOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const timeOptions = { hour: '2-digit', minute: '2-digit' };
+                        return `${date.toLocaleDateString('en-US', dateOptions)} at ${date.toLocaleTimeString('en-US', timeOptions)}`;
+                    };
+                    
                     if (t.type === 'transfer') {
                         // Display transfer transactions differently
                         const fromAccountName = accounts.find(a => a.id === t.fromAccount)?.name || 'Unknown';
@@ -1889,7 +2032,7 @@ function reduceLoanAssets(repaymentAmount) {
                                         </div>
                                         <div>
                                             <p class="font-medium text-gray-900">${t.description || 'Transfer'}</p>
-                                            <p class="text-sm text-gray-500">${fromAccountName} → ${toAccountName} • ${t.date ? new Date(t.date).toLocaleDateString() : ''}</p>
+                                            <p class="text-sm text-gray-500">${fromAccountName} → ${toAccountName} • ${formatDateTime(t.date)}</p>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -1919,8 +2062,8 @@ function reduceLoanAssets(repaymentAmount) {
                                             </svg>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-gray-900">${t.description || t.category || 'Transaction'}</p>
-                                            <p class="text-sm text-gray-500">${t.category || ''} • ${t.date ? new Date(t.date).toLocaleDateString() : ''}</p>
+                                        <p class="font-medium text-gray-900">${t.description || t.category || 'Transaction'}</p>
+                                        <p class="text-sm text-gray-500">${t.category || ''} • ${formatDateTime(t.date)}</p>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -2328,6 +2471,9 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                 }
                 
+                // Record transaction for email notification
+                recordTransactionForEmail(transactions[transactions.length - 1]);
+                
                 saveToFirebase();
                 closeTransactionModal();
                 renderTransactions();
@@ -2680,6 +2826,8 @@ function reduceLoanAssets(repaymentAmount) {
                 currencySelect.value = currency;
                 // Load and display categories
                 updateCategoriesDisplay();
+                // Load email settings
+                loadEmailSettings();
             }
 
             function closeSettingsModal() {
@@ -2689,6 +2837,10 @@ function reduceLoanAssets(repaymentAmount) {
             function saveSettings() {
                 const newCurrency = document.getElementById('currencySelect').value;
                 currency = newCurrency;
+                
+                // Save email settings
+                saveEmailSettings();
+                
                 // Update all displays
                 updateTotals();
                 renderTransactions();
@@ -3397,8 +3549,8 @@ function reduceLoanAssets(repaymentAmount) {
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date</label>
-                                <input type="date" id="paymentDate" value="${new Date().toISOString().split('T')[0]}" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date & Time</label>
+                                <input type="datetime-local" id="paymentDate" value="${new Date().toISOString().slice(0, 16)}" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500">
                             </div>
 
                             <div>
@@ -3478,6 +3630,62 @@ function reduceLoanAssets(repaymentAmount) {
 
             function renderAnalytics() {
                 updateAnalytics();
+            }
+            
+            function showLiabilitiesBreakdown() {
+                const modal = document.getElementById('liabilitiesBreakdownModal');
+                const content = document.getElementById('breakdownContent');
+                
+                let liabilityItems = [];
+                let totalLiabilities = 0;
+                
+                (liabilities || []).forEach(liability => {
+                    const amount = Number(liability.amount || 0);
+                    if (amount > 0) {
+                        liabilityItems.push({name: liability.name, type: liability.type || 'other', amount: amount, category: 'Liability'});
+                        totalLiabilities += amount;
+                    }
+                });
+                
+                (accounts || []).forEach(account => {
+                    const balance = Number(account.balance || 0);
+                    if (balance < 0) {
+                        liabilityItems.push({name: account.name, type: 'account', amount: Math.abs(balance), category: 'Negative Account Balance'});
+                        totalLiabilities += Math.abs(balance);
+                    }
+                });
+                
+                liabilityItems.sort((a, b) => b.amount - a.amount);
+                
+                if (liabilityItems.length === 0) {
+                    content.innerHTML = '<div class="text-center py-8"><p class="text-gray-600 text-lg font-semibold">No Liabilities! 🎉</p></div>';
+                } else {
+                    content.innerHTML = `
+                        <div class="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl p-6 text-white mb-6">
+                            <p class="text-sm opacity-90">Total Liabilities</p>
+                            <p class="text-3xl font-bold mt-1">${currency}${totalLiabilities.toFixed(2)}</p>
+                        </div>
+                        <div class="space-y-3">
+                            ${liabilityItems.map(item => {
+                                const percentage = ((item.amount / totalLiabilities) * 100).toFixed(1);
+                                return `
+                                    <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-red-500">
+                                        <div class="flex justify-between mb-2">
+                                            <div><p class="font-semibold">${item.name}</p><p class="text-xs text-gray-500">${item.category}</p></div>
+                                            <div class="text-right"><p class="font-bold text-red-600">${currency}${item.amount.toFixed(2)}</p><p class="text-xs text-gray-500">${percentage}%</p></div>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: ${percentage}%"></div></div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+                modal.classList.remove('hidden');
+            }
+            
+            function closeLiabilitiesBreakdown() {
+                document.getElementById('liabilitiesBreakdownModal').classList.add('hidden');
             }
 
             function updateAnalytics() {
@@ -3684,6 +3892,185 @@ function reduceLoanAssets(repaymentAmount) {
                 }
 
                 analyticsChart = new Chart(ctx, chartConfig);
+            }
+            
+            // ============================================
+            // EMAIL NOTIFICATION FUNCTIONS
+            // ============================================
+            
+            function toggleEmailNotifications() {
+                const enabled = document.getElementById('enableEmailNotifications').checked;
+                const settingsDiv = document.getElementById('emailNotificationSettings');
+                
+                if (enabled) {
+                    settingsDiv.classList.remove('hidden');
+                } else {
+                    settingsDiv.classList.add('hidden');
+                }
+            }
+            
+            function loadEmailSettings() {
+                const saved = localStorage.getItem('emailNotifications');
+                if (saved) {
+                    emailNotifications = JSON.parse(saved);
+                    document.getElementById('enableEmailNotifications').checked = emailNotifications.enabled;
+                    document.getElementById('notificationEmail').value = emailNotifications.email || '';
+                    document.getElementById('emailjsPublicKey').value = emailNotifications.emailjsPublicKey || '';
+                    document.getElementById('emailjsServiceId').value = emailNotifications.emailjsServiceId || '';
+                    document.getElementById('emailjsTemplateId').value = emailNotifications.emailjsTemplateId || '';
+                    
+                    if (emailNotifications.enabled) {
+                        document.getElementById('emailNotificationSettings').classList.remove('hidden');
+                    }
+                    
+                    // Initialize EmailJS if configured
+                    if (emailNotifications.emailjsPublicKey) {
+                        emailjs.init(emailNotifications.emailjsPublicKey);
+                    }
+                }
+            }
+            
+            function saveEmailSettings() {
+                emailNotifications.enabled = document.getElementById('enableEmailNotifications').checked;
+                emailNotifications.email = document.getElementById('notificationEmail').value;
+                emailNotifications.emailjsPublicKey = document.getElementById('emailjsPublicKey').value;
+                emailNotifications.emailjsServiceId = document.getElementById('emailjsServiceId').value;
+                emailNotifications.emailjsTemplateId = document.getElementById('emailjsTemplateId').value;
+                
+                localStorage.setItem('emailNotifications', JSON.stringify(emailNotifications));
+                
+                // Initialize EmailJS with new key
+                if (emailNotifications.emailjsPublicKey) {
+                    emailjs.init(emailNotifications.emailjsPublicKey);
+                }
+            }
+            
+            function recordTransactionForEmail(transaction) {
+                if (!emailNotifications.enabled) return;
+                
+                const today = new Date().toDateString();
+                if (!emailNotifications.pendingTransactions) {
+                    emailNotifications.pendingTransactions = [];
+                }
+                
+                emailNotifications.pendingTransactions.push({
+                    ...transaction,
+                    recordedAt: new Date().toISOString()
+                });
+                
+                localStorage.setItem('emailNotifications', JSON.stringify(emailNotifications));
+            }
+            
+            async function sendTransactionSummaryEmail() {
+                if (!emailNotifications.enabled || !emailNotifications.email) return;
+                if (!emailNotifications.pendingTransactions || emailNotifications.pendingTransactions.length === 0) return;
+                
+                // Check if EmailJS is configured
+                if (!emailNotifications.emailjsPublicKey || !emailNotifications.emailjsServiceId || !emailNotifications.emailjsTemplateId) {
+                    console.log('EmailJS not configured');
+                    return;
+                }
+                
+                const now = new Date();
+                const hour = now.getHours();
+                
+                // Only send at 6 AM or 6 PM
+                if (hour !== 6 && hour !== 18) return;
+                
+                // Check if we already sent today at this time
+                const lastSent = emailNotifications.lastNotificationDate;
+                const today = now.toDateString();
+                const timeSlot = hour === 6 ? 'morning' : 'evening';
+                const lastSentKey = `${today}-${timeSlot}`;
+                
+                if (lastSent === lastSentKey) return;
+                
+                // Prepare email content
+                const transactionsList = emailNotifications.pendingTransactions.map(t => {
+                    const date = new Date(t.date);
+                    return `- ${t.type.toUpperCase()}: ${currency}${t.amount.toFixed(2)} - ${t.description || t.category} (${date.toLocaleString()})`;
+                }).join('\n');
+                
+                const totalIncome = emailNotifications.pendingTransactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+                    
+                const totalExpense = emailNotifications.pendingTransactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+                
+                const emailParams = {
+                    to_email: emailNotifications.email,
+                    subject: `Transaction Summary - ${timeSlot === 'morning' ? 'Morning' : 'Evening'} Report`,
+                    message: `Transaction Summary for ${today}\n\n` +
+                            `Total Transactions: ${emailNotifications.pendingTransactions.length}\n` +
+                            `Total Income: ${currency}${totalIncome.toFixed(2)}\n` +
+                            `Total Expenses: ${currency}${totalExpense.toFixed(2)}\n` +
+                            `Net: ${currency}${(totalIncome - totalExpense).toFixed(2)}\n\n` +
+                            `Transactions:\n${transactionsList}`
+                };
+                
+                try {
+                    await emailjs.send(
+                        emailNotifications.emailjsServiceId,
+                        emailNotifications.emailjsTemplateId,
+                        emailParams
+                    );
+                    
+                    // Mark as sent and clear pending transactions
+                    emailNotifications.lastNotificationDate = lastSentKey;
+                    emailNotifications.pendingTransactions = [];
+                    localStorage.setItem('emailNotifications', JSON.stringify(emailNotifications));
+                    
+                    console.log('Transaction summary email sent successfully');
+                } catch (error) {
+                    console.error('Failed to send email:', error);
+                }
+            }
+            
+            async function testEmailNotification() {
+                saveEmailSettings();
+                
+                if (!emailNotifications.email) {
+                    alert('Please enter your notification email address');
+                    return;
+                }
+                
+                if (!emailNotifications.emailjsPublicKey || !emailNotifications.emailjsServiceId || !emailNotifications.emailjsTemplateId) {
+                    alert('Please configure all EmailJS settings');
+                    return;
+                }
+                
+                const emailParams = {
+                    to_email: emailNotifications.email,
+                    subject: 'Test Email - Budget Tracker Notifications',
+                    message: 'This is a test email from your Budget Tracker Pro app.\n\nIf you received this, your email notifications are configured correctly!\n\nYou will receive transaction summaries at 6 AM and 6 PM daily.'
+                };
+                
+                try {
+                    await emailjs.send(
+                        emailNotifications.emailjsServiceId,
+                        emailNotifications.emailjsTemplateId,
+                        emailParams
+                    );
+                    alert('✅ Test email sent successfully! Check your inbox.');
+                } catch (error) {
+                    console.error('Test email failed:', error);
+                    alert('❌ Failed to send test email. Please check your EmailJS configuration.');
+                }
+            }
+            
+            // Check and send emails every hour
+            function startEmailNotificationScheduler() {
+                loadEmailSettings();
+                
+                // Check immediately
+                sendTransactionSummaryEmail();
+                
+                // Then check every hour
+                setInterval(() => {
+                    sendTransactionSummaryEmail();
+                }, 60 * 60 * 1000); // Every hour
             }
 
             // End of script - ensure HTML is properly closed
