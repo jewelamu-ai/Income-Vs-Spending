@@ -24,6 +24,13 @@ A professional budget tracking application with Firebase integration
     
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        /* Prevent login screen flash on page load */
+        #loginScreen { display: none; }
+        #mainApp { display: none; }
+        body.auth-ready #loginScreen,
+        body.auth-ready #mainApp { display: block; }
+        
         .tab-active { color: #4f46e5; font-weight: 600; }
         .tab-active svg { stroke: #4f46e5; }
         .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
@@ -50,6 +57,32 @@ A professional budget tracking application with Firebase integration
         .filter-btn-active.filter-income { background-color: #16a34a !important; color: white !important; border-color: #16a34a !important; }
         .filter-btn-active.filter-expense { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
         .filter-btn-active.filter-transfer { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            /* Hide labels on small screens */
+            .mobile-hide-label { display: none; }
+            
+            /* Stack filter buttons vertically on mobile */
+            .filter-buttons-mobile { flex-wrap: wrap; }
+            
+            /* Adjust padding and margins for mobile */
+            .mobile-compact { padding: 0.75rem !important; }
+            
+            /* Make modals full screen on mobile */
+            .modal-mobile-full { max-width: 100% !important; margin: 0 !important; height: 100vh !important; border-radius: 0 !important; }
+            
+            /* Smaller text on mobile */
+            .mobile-text-sm { font-size: 0.875rem !important; }
+            
+            /* Hide email on very small screens */
+            @media (max-width: 640px) {
+                #userEmail { display: none !important; }
+            }
+        }
+        
+        /* Ensure bottom navigation is always on top */
+        .bottom-nav { z-index: 30 !important; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
@@ -134,18 +167,18 @@ A professional budget tracking application with Firebase integration
         <!-- Header -->
         <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
             <div class="max-w-6xl mx-auto p-4">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <div class="flex items-center gap-2">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 md:w-7 md:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                         </svg>
-                        <h1 class="text-2xl font-bold">Budget Tracker Pro</h1>
+                        <h1 class="text-lg md:text-2xl font-bold">Budget Tracker Pro</h1>
                     </div>
-                    <div class="flex gap-2 items-center">
+                    <div class="flex gap-1 md:gap-2 items-center flex-wrap">
                         <span id="userEmail" class="text-sm opacity-90 hidden md:block"></span>
-                        <button onclick="openSettingsModal()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">Settings</button>
-                        <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">Export</button>
-                        <button onclick="logoutUser()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">Logout</button>
+                        <button onclick="openSettingsModal()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Settings</button>
+                        <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Export</button>
+                        <button onclick="logoutUser()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Logout</button>
                     </div>
                 </div>
 
@@ -169,46 +202,46 @@ A professional budget tracking application with Firebase integration
                 </div>
 
                 <!-- Balance Cards -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm opacity-90">Income</div>
-                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl md:rounded-2xl p-3 md:p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-1 md:mb-2">
+                            <div class="text-xs md:text-sm opacity-90">Income</div>
+                            <svg class="w-4 h-4 md:w-6 md:h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                             </svg>
                         </div>
-                        <p id="totalIncome" class="text-2xl font-bold">GHS0.00</p>
-                        <div class="text-xs opacity-75 mt-1">This month</div>
+                        <p id="totalIncome" class="text-lg md:text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-0.5 md:mt-1">This month</div>
                     </div>
-                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-4 text-white shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm opacity-90">Expenses</div>
-                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl md:rounded-2xl p-3 md:p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-1 md:mb-2">
+                            <div class="text-xs md:text-sm opacity-90">Expenses</div>
+                            <svg class="w-4 h-4 md:w-6 md:h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
                         </div>
-                        <p id="totalExpense" class="text-2xl font-bold">GHS0.00</p>
-                        <div class="text-xs opacity-75 mt-1">This month</div>
+                        <p id="totalExpense" class="text-lg md:text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-0.5 md:mt-1">This month</div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm opacity-90">Balance</div>
-                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl md:rounded-2xl p-3 md:p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-1 md:mb-2">
+                            <div class="text-xs md:text-sm opacity-90">Balance</div>
+                            <svg class="w-4 h-4 md:w-6 md:h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                             </svg>
                         </div>
-                        <p id="balance" class="text-2xl font-bold">GHS0.00</p>
-                        <div class="text-xs opacity-75 mt-1">Available</div>
+                        <p id="balance" class="text-lg md:text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-0.5 md:mt-1">Available</div>
                     </div>
-                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm opacity-90">Budget Left</div>
-                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl md:rounded-2xl p-3 md:p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-1 md:mb-2">
+                            <div class="text-xs md:text-sm opacity-90">Budget Left</div>
+                            <svg class="w-4 h-4 md:w-6 md:h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
                         </div>
-                        <p id="budgetLeft" class="text-2xl font-bold">GHS0.00</p>
-                        <div class="text-xs opacity-75 mt-1">Remaining</div>
+                        <p id="budgetLeft" class="text-lg md:text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-0.5 md:mt-1">Remaining</div>
                     </div>
                 </div>
 
@@ -291,7 +324,7 @@ A professional budget tracking application with Firebase integration
         </div>
 
         <!-- Bottom Navigation -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-30">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg bottom-nav">
             <div class="max-w-6xl mx-auto flex">
                 <button onclick="switchTab('transactions')" id="tabTransactions" class="tab-active flex-1 py-3 px-2 flex flex-col items-center justify-center text-xs">
                     <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,27 +372,27 @@ A professional budget tracking application with Firebase integration
         </div>
 
         <!-- Main Content Container -->
-        <div class="max-w-6xl mx-auto p-4 pb-20">
+        <div class="max-w-6xl mx-auto p-2 md:p-4 pb-24 md:pb-20">
             <!-- Transactions Tab -->
             <div id="contentTransactions" class="tab-content">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap filter-buttons-mobile">
                         <button onclick="setFilter('all', event)" id="filterAll" class="filter-btn px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white border-2 border-indigo-600 transition-all duration-200 hover:shadow-lg">All</button>
                         <button onclick="setFilter('income', event)" id="filterIncome" class="filter-btn px-3 py-2 text-sm rounded-lg bg-green-100 text-green-700 border-2 border-green-200 transition-all duration-200 hover:shadow-lg">Income</button>
                         <button onclick="setFilter('expense', event)" id="filterExpense" class="filter-btn px-3 py-2 text-sm rounded-lg bg-red-100 text-red-700 border-2 border-red-200 transition-all duration-200 hover:shadow-lg">Expense</button>
                         <button onclick="setFilter('transfer', event)" id="filterTransfer" class="filter-btn px-3 py-2 text-sm rounded-lg bg-blue-100 text-blue-700 border-2 border-blue-200 transition-all duration-200 hover:shadow-lg">Transfers</button>
                     </div>
-                    <div class="flex gap-2 items-center">
-                        <input type="text" id="searchInput" placeholder="Search transactions..." class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="handleSearch()">
+                    <div class="flex gap-2 items-center flex-wrap w-full md:w-auto">
+                        <input type="text" id="searchInput" placeholder="Search..." class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 md:flex-initial" oninput="handleSearch()">
                         <div class="flex items-center gap-1">
-                            <label for="dateFrom" class="text-xs text-gray-600">From:</label>
+                            <label for="dateFrom" class="text-xs text-gray-600 mobile-hide-label">From:</label>
                             <input type="date" id="dateFrom" class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
                         </div>
                         <div class="flex items-center gap-1">
-                            <label for="dateTo" class="text-xs text-gray-600">To:</label>
+                            <label for="dateTo" class="text-xs text-gray-600 mobile-hide-label">To:</label>
                             <input type="date" id="dateTo" class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
                         </div>
-                        <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add</button>
+                        <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">+ Add</button>
                     </div>
                 </div>
                 <div id="transactionsList" class="bg-white rounded-xl shadow-md"></div>
@@ -545,15 +578,15 @@ A professional budget tracking application with Firebase integration
     </div>
 
     <!-- Floating Action Button -->
-    <button onclick="openTransactionModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button onclick="openTransactionModal()" class="fixed bottom-20 md:bottom-6 right-4 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40">
+        <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
     </button>
 
     <!-- All Modals (Transaction, Budget, Account, Reminder) - Same as before -->
-    <div id="transactionModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 my-8">
+    <div id="transactionModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Add Transaction</h2>
                 <button onclick="closeTransactionModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
@@ -649,8 +682,8 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
-    <div id="budgetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+    <div id="budgetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Set Budget</h2>
                 <button onclick="closeBudgetModal()" class="text-gray-400 hover:text-gray-600">✕</button>
@@ -668,8 +701,8 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
-    <div id="accountModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 my-8">
+    <div id="accountModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Add Account</h2>
                 <button onclick="closeAccountModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
@@ -716,8 +749,8 @@ A professional budget tracking application with Firebase integration
     </div>
 
     <!-- Asset Modal -->
-    <div id="assetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 my-8">
+    <div id="assetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="assetModalTitle" class="text-2xl font-bold text-gray-800">Add New Asset</h2>
                 <button onclick="closeAssetModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
@@ -772,8 +805,8 @@ A professional budget tracking application with Firebase integration
     </div>
 
     <!-- Liability Modal -->
-    <div id="liabilityModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 my-8">
+    <div id="liabilityModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="liabilityModalTitle" class="text-2xl font-bold text-gray-800">Add New Liability</h2>
                 <button onclick="closeLiabilityModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
@@ -839,8 +872,8 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
-    <div id="reminderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+    <div id="reminderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Add Reminder</h2>
                 <button onclick="closeReminderModal()" class="text-gray-400 hover:text-gray-600">✕</button>
@@ -861,8 +894,8 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
-    <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Settings</h2>
                 <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-600">✕</button>
@@ -1103,6 +1136,9 @@ A professional budget tracking application with Firebase integration
         // AUTHENTICATION
         // ============================================
         auth.onAuthStateChanged(user => {
+            // Add auth-ready class to body to show content
+            document.body.classList.add('auth-ready');
+            
             if (user) {
                 currentUser = user;
                 document.getElementById('loginScreen').classList.add('hidden');
@@ -3326,9 +3362,10 @@ function reduceLoanAssets(repaymentAmount) {
 
                 // Create payment modal HTML
                 const paymentModal = document.createElement('div');
-                paymentModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                paymentModal.id = 'paymentModal';
+                paymentModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto';
                 paymentModal.innerHTML = `
-                    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
+                    <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-bold text-gray-800">Make Payment</h2>
                             <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
@@ -3406,7 +3443,7 @@ function reduceLoanAssets(repaymentAmount) {
                     id: Date.now().toString(),
                     type: 'expense',
                     category: 'Debt Payment',
-                    amount: -paymentAmount,
+                    amount: paymentAmount,  // Fixed: amount should be positive for expenses
                     account: paymentAccount,
                     description: paymentDescription || `Payment towards ${liability.name}`,
                     date: paymentDate,
@@ -3424,18 +3461,17 @@ function reduceLoanAssets(repaymentAmount) {
                     console.log(`Account '${account.name}' balance AFTER payment: ${account.balance}`);
                 }
 
-                saveToFirebase();
-                // Re-render liabilities and other sections with a slight delay
-                // to ensure the DOM is ready after modal removal.
-                setTimeout(() => {
-                    renderLiabilities();
-                    renderTransactions();
-                    renderAccounts();
-                    updateFinancialPosition();
-                }, 50);
+                // Close modal first
+                const modal = document.getElementById('paymentModal');
+                if (modal) modal.remove();
 
-                // Close modal
-                document.querySelector('.fixed').remove();
+                saveToFirebase();
+                
+                // Re-render liabilities and other sections
+                renderLiabilities();
+                renderTransactions();
+                renderAccounts();
+                updateFinancialPosition();
 
                 alert(`Payment of ${currency}${paymentAmount.toFixed(2)} recorded successfully!`);
             }
