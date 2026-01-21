@@ -1494,6 +1494,8 @@ A professional budget tracking application with Firebase integration
                     liabilities = data.liabilities || [];
                     currency = data.currency || 'GHS';
                     
+                    console.log('Loaded from Firebase, accounts:', accounts.length, accounts);
+                    
                     // Save to localStorage as backup
                     localStorage.setItem('budgetTracker_backup', JSON.stringify({
                         transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
@@ -1503,6 +1505,7 @@ A professional budget tracking application with Firebase integration
                     recalculateAccountBalances();
                 } else {
                     // No data in Firebase, try localStorage
+                    console.log('No Firebase data, loading from localStorage');
                     loadFromLocalStorage();
                 }
                 
@@ -1518,8 +1521,10 @@ A professional budget tracking application with Firebase integration
         }
 
         async function saveToFirebase() {
+            console.log('saveToFirebase called, accounts:', accounts.length);
             if (!currentUser) {
                 // Save to localStorage only
+                console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
                     transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
@@ -1529,6 +1534,7 @@ A professional budget tracking application with Firebase integration
             setSyncStatus('Syncing...');
             
             try {
+                console.log('Saving to Firebase, accounts:', accounts);
                 await db.collection('users').doc(currentUser.uid).set({
                     transactions,
                     budgets,
@@ -1545,6 +1551,7 @@ A professional budget tracking application with Firebase integration
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
                     transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
+                console.log('Saved to Firebase successfully');
                 
                 setSyncStatus('Synced');
             } catch (error) {
@@ -1559,6 +1566,7 @@ A professional budget tracking application with Firebase integration
 
         function loadFromLocalStorage() {
             const backup = localStorage.getItem('budgetTracker_backup');
+            console.log('loadFromLocalStorage called, backup exists:', !!backup);
             if (backup) {
                 const data = JSON.parse(backup);
                 transactions = data.transactions || [];
@@ -1570,10 +1578,13 @@ A professional budget tracking application with Firebase integration
                 liabilities = data.liabilities || [];
                 currency = data.currency || 'GHS';
                 
+                console.log('Loaded from localStorage, accounts:', accounts.length, accounts);
+                
                 // Recalculate account balances
                 recalculateAccountBalances();
             } else {
                 // No backup, use defaults
+                console.log('No localStorage backup, using defaults');
                 accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
             }
         }
@@ -1748,6 +1759,7 @@ function reduceLoanAssets(repaymentAmount) {
             updateAccountSelectors();
             renderTransactions();
             renderBudgets();
+            renderAccounts();
             updateTotals();
             
             // Initialize filter button active state
@@ -2785,6 +2797,8 @@ function reduceLoanAssets(repaymentAmount) {
                 };
 
                 accounts.push(newAccount);
+                console.log('Account added:', newAccount);
+                console.log('Total accounts:', accounts.length);
                 saveToFirebase();
                 closeAccountModal();
                 updateAccountSelectors();
