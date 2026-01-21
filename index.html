@@ -1476,12 +1476,7 @@ A professional budget tracking application with Firebase integration
         }
 
         async function loadFirebaseData() {
-            if (!currentUser) {
-                console.log('No user logged in, loading from localStorage');
-                loadFromLocalStorage();
-                init();
-                return;
-            }
+            if (!currentUser) return;
             
             setSyncStatus('Loading...');
             
@@ -1510,16 +1505,14 @@ A professional budget tracking application with Firebase integration
                     recalculateAccountBalances();
                 } else {
                     // No data in Firebase, try localStorage
-                    console.log('No Firebase data found, loading from localStorage');
+                    console.log('No Firebase data, loading from localStorage');
                     loadFromLocalStorage();
                 }
                 
                 init();
                 setSyncStatus('Synced');
             } catch (error) {
-                console.error('Firebase load error:', error);
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
+                console.error('Load error:', error);
                 setSyncStatus('Offline - using local data', true);
                 // Load from localStorage as fallback
                 loadFromLocalStorage();
@@ -1529,26 +1522,19 @@ A professional budget tracking application with Firebase integration
 
         async function saveToFirebase() {
             console.log('saveToFirebase called, accounts:', accounts.length);
-            
-            // Always save to localStorage first
-            try {
+            if (!currentUser) {
+                // Save to localStorage only
+                console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
                     transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
                 }));
-                console.log('Saved to localStorage successfully');
-            } catch (localError) {
-                console.error('localStorage save error:', localError);
-            }
-            
-            if (!currentUser) {
-                console.log('No user logged in, data saved to localStorage only');
                 return;
             }
             
             setSyncStatus('Syncing...');
             
             try {
-                console.log('Attempting to save to Firebase, accounts:', accounts);
+                console.log('Saving to Firebase, accounts:', accounts);
                 await db.collection('users').doc(currentUser.uid).set({
                     transactions,
                     budgets,
@@ -1559,15 +1545,22 @@ A professional budget tracking application with Firebase integration
                     liabilities,
                     currency,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+                });
                 
+                // Also save to localStorage as backup
+                localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                }));
                 console.log('Saved to Firebase successfully');
+                
                 setSyncStatus('Synced');
             } catch (error) {
-                console.error('Firebase save error:', error);
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
+                console.error('Save error:', error);
                 setSyncStatus('Sync failed - saved locally', true);
+                // Save to localStorage as fallback
+                localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                }));
             }
         }
 
@@ -1752,7 +1745,6 @@ function reduceLoanAssets(repaymentAmount) {
                 }
             }
         function init() {
-            console.log('init() called, accounts:', accounts.length, accounts);
             // Set current date and time
             const now = new Date();
             const year = now.getFullYear();
@@ -1769,8 +1761,6 @@ function reduceLoanAssets(repaymentAmount) {
             renderBudgets();
             renderAccounts();
             updateTotals();
-            
-            console.log('init() completed, accounts rendered:', accounts.length);
             
             // Initialize filter button active state
             setFilter('all');
@@ -2972,15 +2962,10 @@ function reduceLoanAssets(repaymentAmount) {
             }
 
             function renderAccounts() {
-                console.log('renderAccounts() called, accounts:', accounts.length);
                 const el = document.getElementById('accountsList');
-                if (!el) {
-                    console.error('accountsList element not found!');
-                    return;
-                }
+                if (!el) return;
 
                 if (!accounts || accounts.length === 0) {
-                    console.log('No accounts to render');
                     el.innerHTML = `
                         <div class="text-center py-8">
                             <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
