@@ -256,6 +256,15 @@ A professional budget tracking application with Firebase integration
                     <span>Auto-logout in 5 minutes of inactivity</span>
                 </div>
 
+                <!-- Profile Selector -->
+                <div class="mb-4 flex gap-2 items-center">
+                    <label class="text-sm font-semibold opacity-90">Profile:</label>
+                    <select id="profileSelector" onchange="switchProfile()" class="bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2 backdrop-blur-sm flex-1">
+                        <option value="">Select Profile</option>
+                    </select>
+                    <button onclick="openProfileModal()" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm">+ New Profile</button>
+                </div>
+
                 <!-- Account Selector -->
                 <div class="mb-4">
                     <select id="accountSelector" onchange="switchAccount()" class="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2 w-full backdrop-blur-sm">
@@ -979,6 +988,37 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
+    <!-- Profile Management Modal -->
+    <div id="profileModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Manage Profiles</h2>
+                <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <!-- Profile List -->
+            <div id="profilesList" class="space-y-3 mb-6 max-h-64 overflow-y-auto">
+                <!-- Profiles will be populated here -->
+            </div>
+            
+            <!-- Create New Profile -->
+            <div class="border-t pt-4">
+                <h3 class="font-semibold text-gray-800 mb-3">Create New Profile</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name *</label>
+                        <input type="text" id="newProfileName" placeholder="e.g., Personal, Side Hustle" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                        <textarea id="newProfileDesc" placeholder="Add notes about this profile" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" rows="2"></textarea>
+                    </div>
+                    <button onclick="createProfile()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700">Create Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="settingsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
         <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -1256,6 +1296,10 @@ A professional budget tracking application with Firebase integration
         // ============================================
         // APP STATE
         // ============================================
+        // Profile management
+        let profiles = [];
+        let currentProfileId = null;
+        
         let transactions = [];
         let budgets = [];
         let accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
@@ -1542,6 +1586,7 @@ A professional budget tracking application with Firebase integration
                 
                 if (userDoc.exists) {
                     const data = userDoc.data();
+                    profiles = data.profiles || [];
                     transactions = data.transactions || [];
                     budgets = data.budgets || [];
                     accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
@@ -1550,12 +1595,13 @@ A professional budget tracking application with Firebase integration
                     assets = data.assets || [];
                     liabilities = data.liabilities || [];
                     currency = data.currency || 'GHS';
+                    currentProfileId = data.currentProfileId || null;
                     
-                    console.log('Loaded from Firebase, accounts:', accounts.length, accounts);
+                    console.log('Loaded from Firebase, profiles:', profiles.length, 'accounts:', accounts.length);
                     
                     // Save to localStorage as backup
                     localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                        transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                        profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
                     }));
                     
                     // Recalculate account balances based on transactions to ensure accuracy
@@ -1576,14 +1622,13 @@ A professional budget tracking application with Firebase integration
                 init();
             }
         }
-
         async function saveToFirebase() {
-            console.log('saveToFirebase called, accounts:', accounts.length);
+            console.log('saveToFirebase called, profiles:', profiles.length);
             if (!currentUser) {
                 // Save to localStorage only
                 console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
                 }));
                 return;
             }
@@ -1591,8 +1636,9 @@ A professional budget tracking application with Firebase integration
             setSyncStatus('Syncing...');
             
             try {
-                console.log('Saving to Firebase, accounts:', accounts);
+                console.log('Saving to Firebase, profiles:', profiles);
                 await db.collection('users').doc(currentUser.uid).set({
+                    profiles,
                     transactions,
                     budgets,
                     accounts,
@@ -1601,12 +1647,13 @@ A professional budget tracking application with Firebase integration
                     assets,
                     liabilities,
                     currency,
+                    currentProfileId,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 // Also save to localStorage as backup
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
                 }));
                 console.log('Saved to Firebase successfully');
                 
@@ -1616,7 +1663,7 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
                 }));
             }
         }
@@ -1626,6 +1673,7 @@ A professional budget tracking application with Firebase integration
             console.log('loadFromLocalStorage called, backup exists:', !!backup);
             if (backup) {
                 const data = JSON.parse(backup);
+                profiles = data.profiles || [];
                 transactions = data.transactions || [];
                 budgets = data.budgets || [];
                 accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
@@ -1634,14 +1682,16 @@ A professional budget tracking application with Firebase integration
                 assets = data.assets || [];
                 liabilities = data.liabilities || [];
                 currency = data.currency || 'GHS';
+                currentProfileId = data.currentProfileId || null;
                 
-                console.log('Loaded from localStorage, accounts:', accounts.length, accounts);
+                console.log('Loaded from localStorage, profiles:', profiles.length, 'accounts:', accounts.length);
                 
                 // Recalculate account balances
                 recalculateAccountBalances();
             } else {
                 // No backup, use defaults
                 console.log('No localStorage backup, using defaults');
+                profiles = [];
                 accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
             }
         }
@@ -1655,6 +1705,7 @@ A professional budget tracking application with Firebase integration
         const confirmDelete = confirm(
         '⚠️ WARNING: This will permanently delete ALL your data!\n\n' +
         'This includes:\n' +
+        '• All profiles and all their data\n' +
         '• All transactions (income & expenses)\n' +
         '• All budgets and budget history\n' +
         '• All accounts and balances\n' +
@@ -1828,6 +1879,9 @@ function reduceLoanAssets(repaymentAmount) {
         function init() {
             // Load theme preference
             loadTheme();
+            
+            // Update profile selector
+            updateProfileSelector();
             
             // Set current date and time
             const now = new Date();
@@ -2454,6 +2508,165 @@ function reduceLoanAssets(repaymentAmount) {
                 currentAccount = document.getElementById('accountSelector').value;
                 renderTransactions();
                 updateTotals();
+            }
+            
+            // ============================================
+            // PROFILE MANAGEMENT
+            // ============================================
+            function openProfileModal() {
+                document.getElementById('profileModal').classList.remove('hidden');
+                displayProfiles();
+                document.getElementById('newProfileName').value = '';
+                document.getElementById('newProfileDesc').value = '';
+            }
+            
+            function closeProfileModal() {
+                document.getElementById('profileModal').classList.add('hidden');
+            }
+            
+            function createProfile() {
+                const name = document.getElementById('newProfileName').value.trim();
+                const description = document.getElementById('newProfileDesc').value.trim();
+                
+                if (!name) {
+                    alert('Please enter a profile name');
+                    return;
+                }
+                
+                // Check if profile name already exists
+                if (profiles.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+                    alert('A profile with this name already exists');
+                    return;
+                }
+                
+                const profile = {
+                    id: Date.now().toString() + Math.random().toString(36).slice(2),
+                    name,
+                    description,
+                    createdDate: new Date().toISOString(),
+                    data: {
+                        transactions: [],
+                        budgets: [],
+                        accounts: [{id: 'default', name: 'Cash', type: 'cash', balance: 0}],
+                        recurring: [],
+                        reminders: [],
+                        assets: [],
+                        liabilities: []
+                    }
+                };
+                
+                profiles.push(profile);
+                saveToFirebase();
+                displayProfiles();
+                alert('✅ Profile created! Switch to it from the dropdown.');
+            }
+            
+            function switchProfile() {
+                const profileId = document.getElementById('profileSelector').value;
+                
+                if (!profileId) return;
+                
+                const profile = profiles.find(p => p.id === profileId);
+                if (!profile) {
+                    alert('Profile not found');
+                    return;
+                }
+                
+                // Save current profile data if there was one
+                if (currentProfileId) {
+                    const currentProfile = profiles.find(p => p.id === currentProfileId);
+                    if (currentProfile) {
+                        currentProfile.data = {
+                            transactions,
+                            budgets,
+                            accounts,
+                            recurring,
+                            reminders,
+                            assets,
+                            liabilities
+                        };
+                    }
+                }
+                
+                // Load new profile data
+                currentProfileId = profileId;
+                transactions = profile.data.transactions || [];
+                budgets = profile.data.budgets || [];
+                accounts = profile.data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+                recurring = profile.data.recurring || [];
+                reminders = profile.data.reminders || [];
+                assets = profile.data.assets || [];
+                liabilities = profile.data.liabilities || [];
+                
+                saveToFirebase();
+                renderTransactions();
+                renderBudgets();
+                renderAccounts();
+                updateTotals();
+                updateAccountSelectors();
+                
+                console.log('✓ Switched to profile:', profile.name);
+            }
+            
+            function displayProfiles() {
+                const el = document.getElementById('profilesList');
+                if (!el) return;
+                
+                if (profiles.length === 0) {
+                    el.innerHTML = '<p class="text-gray-500 text-center py-4">No profiles created yet</p>';
+                    return;
+                }
+                
+                el.innerHTML = profiles.map(profile => `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800">${profile.name}</h4>
+                            ${profile.description ? `<p class="text-xs text-gray-600 mt-1">${profile.description}</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-2">
+                                📊 ${profile.data.transactions?.length || 0} transactions | 💰 ${profile.data.accounts?.length || 0} accounts
+                            </p>
+                        </div>
+                        <div class="flex gap-2 ml-2">
+                            <button onclick="deleteProfile('${profile.id}')" class="text-red-600 hover:text-red-800 px-2 py-1 text-xs bg-red-50 rounded">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            function deleteProfile(profileId) {
+                const profile = profiles.find(p => p.id === profileId);
+                if (!profile) return;
+                
+                if (currentProfileId === profileId) {
+                    alert('Cannot delete the currently active profile. Switch to another profile first.');
+                    return;
+                }
+                
+                if (confirm(`Delete profile "${profile.name}" and all its data? This cannot be undone.`)) {
+                    profiles = profiles.filter(p => p.id !== profileId);
+                    saveToFirebase();
+                    displayProfiles();
+                    alert('✅ Profile deleted');
+                }
+            }
+            
+            function updateProfileSelector() {
+                const select = document.getElementById('profileSelector');
+                if (!select) return;
+                
+                const current = select.value;
+                select.innerHTML = '<option value="">Select Profile</option>';
+                
+                profiles.forEach(profile => {
+                    const option = document.createElement('option');
+                    option.value = profile.id;
+                    option.textContent = profile.name;
+                    if (profile.id === currentProfileId) {
+                        option.selected = true;
+                        option.textContent += ' ✓';
+                    }
+                    select.appendChild(option);
+                });
             }
 
             function openTransactionModal() { document.getElementById('transactionModal').classList.remove('hidden'); }
