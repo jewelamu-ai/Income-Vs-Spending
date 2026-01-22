@@ -26,6 +26,58 @@ A professional budget tracking application with Firebase integration
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         
+        /* Dark mode support */
+        body.dark-mode {
+            background: linear-gradient(to bottom right, #1f2937, #111827) !important;
+            color: #e5e7eb !important;
+        }
+        
+        body.dark-mode #mainApp {
+            background: #111827 !important;
+            color: #e5e7eb !important;
+        }
+        
+        body.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+        }
+        
+        body.dark-mode .text-gray-800,
+        body.dark-mode .text-gray-900 {
+            color: #e5e7eb !important;
+        }
+        
+        body.dark-mode .text-gray-500,
+        body.dark-mode .text-gray-600,
+        body.dark-mode .text-gray-700 {
+            color: #9ca3af !important;
+        }
+        
+        body.dark-mode .border-gray-200,
+        body.dark-mode .border-gray-100 {
+            border-color: #374151 !important;
+        }
+        
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #e5e7eb !important;
+            border-color: #4b5563 !important;
+        }
+        
+        body.dark-mode input::placeholder {
+            color: #9ca3af !important;
+        }
+        
+        body.dark-mode #settingsModal {
+            background-color: rgba(0, 0, 0, 0.75) !important;
+        }
+        
+        body.dark-mode #settingsModal .bg-white {
+            background-color: #1f2937 !important;
+        }
+        
         /* Prevent login screen flash on page load */
         #loginScreen,
         #mainApp {
@@ -185,6 +237,7 @@ A professional budget tracking application with Firebase integration
                     </div>
                     <div class="flex gap-1 md:gap-2 items-center flex-wrap">
                         <span id="userEmail" class="text-sm opacity-90 hidden md:block"></span>
+                        <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm" title="Toggle theme">🌙</button>
                         <button onclick="openSettingsModal()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Settings</button>
                         <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Export</button>
                         <button onclick="logoutUser()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Logout</button>
@@ -1748,7 +1801,34 @@ function reduceLoanAssets(repaymentAmount) {
                     budget.spent = Number(budget.spent || 0) + amount;
                 }
             }
+        
+        // Theme management
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('budgetTracker_theme') || 'light';
+            applyTheme(savedTheme);
+        }
+        
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggleBtn').textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeToggleBtn').textContent = '🌙';
+            }
+            localStorage.setItem('budgetTracker_theme', theme);
+        }
+        
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('budgetTracker_theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+        
         function init() {
+            // Load theme preference
+            loadTheme();
+            
             // Set current date and time
             const now = new Date();
             const year = now.getFullYear();
