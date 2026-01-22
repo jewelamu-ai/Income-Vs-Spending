@@ -2519,6 +2519,26 @@ function reduceLoanAssets(repaymentAmount) {
                         return;
                     }
                     
+                    // For expenses, check if account has sufficient balance
+                    if (currentType === 'expense') {
+                        const selectedAccount = accounts.find(a => a.id === account);
+                        const currentBalance = Number(selectedAccount?.balance || 0);
+                        if (amount > currentBalance) {
+                            alert(`Insufficient balance! Account has ${currency}${currentBalance.toFixed(2)} but you're trying to spend ${currency}${amount.toFixed(2)}`);
+                            return;
+                        }
+                    }
+                    
+                    // For transfers, check if from-account has sufficient balance
+                    if (currentType === 'transfer') {
+                        const fromAcc = accounts.find(a => a.id === fromAccount);
+                        const fromBalance = Number(fromAcc?.balance || 0);
+                        if (amount > fromBalance) {
+                            alert(`Insufficient balance in "${fromAcc?.name || 'source account'}"! Current balance: ${currency}${fromBalance.toFixed(2)}`);
+                            return;
+                        }
+                    }
+                    
                     transactions.push({
                         type: currentType,
                         amount,
