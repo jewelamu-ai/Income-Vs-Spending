@@ -1923,6 +1923,55 @@ function reduceLoanAssets(repaymentAmount) {
             applyTheme(newTheme);
         }
         
+        // Calculator functions - Global scope
+        function openCalculator() {
+            document.getElementById('calculatorModal').classList.remove('hidden');
+            document.getElementById('calcDisplay').value = '0';
+        }
+
+        function closeCalculator() {
+            document.getElementById('calculatorModal').classList.add('hidden');
+        }
+
+        function calcDisplay() {
+            return document.getElementById('calcDisplay');
+        }
+
+        function calcAppend(value) {
+            const display = calcDisplay();
+            if (display.value === '0' && value !== '.') {
+                display.value = value;
+            } else {
+                display.value += value;
+            }
+        }
+
+        function calcClear() {
+            calcDisplay().value = '0';
+        }
+
+        function calcBackspace() {
+            const display = calcDisplay();
+            if (display.value.length > 1) {
+                display.value = display.value.slice(0, -1);
+            } else {
+                display.value = '0';
+            }
+        }
+
+        function calcEquals() {
+            const display = calcDisplay();
+            try {
+                // Replace display operators with JavaScript operators
+                let expression = display.value.replace(/÷/g, '/').replace(/×/g, '*').replace(/−/g, '-');
+                const result = eval(expression);
+                display.value = result.toFixed(2);
+            } catch (e) {
+                display.value = 'Error';
+                setTimeout(() => { display.value = '0'; }, 1000);
+            }
+        }
+        
         function init() {
             // Load theme preference
             loadTheme();
@@ -4714,6 +4763,54 @@ function reduceLoanAssets(repaymentAmount) {
 
             // End of script - ensure HTML is properly closed
         </script>
+
+    <!-- Floating Calculator Button -->
+    <button onclick="openCalculator()" class="fixed bottom-24 right-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3v3m-6-1h12a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+    </button>
+
+    <!-- Calculator Modal -->
+    <div id="calculatorModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div class="flex justify-between items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-t-2xl">
+                <h2 class="text-xl font-bold">Calculator</h2>
+                <button onclick="closeCalculator()" class="text-white hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <input type="text" id="calcDisplay" readonly class="w-full bg-gray-100 border-2 border-gray-300 rounded-lg p-4 text-right text-2xl font-mono mb-4 focus:outline-none">
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="calcClear()" class="col-span-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Clear</button>
+                    <button onclick="calcAppend('/')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg">÷</button>
+                    <button onclick="calcAppend('*')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg">×</button>
+                    
+                    <button onclick="calcAppend('7')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">7</button>
+                    <button onclick="calcAppend('8')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">8</button>
+                    <button onclick="calcAppend('9')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">9</button>
+                    <button onclick="calcAppend('-')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg">−</button>
+                    
+                    <button onclick="calcAppend('4')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">4</button>
+                    <button onclick="calcAppend('5')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">5</button>
+                    <button onclick="calcAppend('6')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">6</button>
+                    <button onclick="calcAppend('+')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg">+</button>
+                    
+                    <button onclick="calcAppend('1')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">1</button>
+                    <button onclick="calcAppend('2')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">2</button>
+                    <button onclick="calcAppend('3')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">3</button>
+                    <button onclick="calcBackspace()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg">⌫</button>
+                    
+                    <button onclick="calcAppend('0')" class="col-span-2 bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">0</button>
+                    <button onclick="calcAppend('.')" class="bg-gray-300 hover:bg-gray-400 font-bold py-3 rounded-lg">.</button>
+                    <button onclick="calcEquals()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg">=</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     </body>
     </html>
