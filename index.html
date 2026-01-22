@@ -1348,6 +1348,14 @@ A professional budget tracking application with Firebase integration
         let liabilities = [];
         let currentFilter = 'all';
         let currentType = 'expense';
+        
+        // Format number with thousand separators
+        function formatAmount(value) {
+            return Number(value || 0).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
         let currentTab = 'transactions';
         let currentAccount = 'default';
         let currency = 'GHS';
@@ -2122,7 +2130,7 @@ function reduceLoanAssets(repaymentAmount) {
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-bold text-lg text-gray-900">${currency}${Number(reminder.amount || 0).toFixed(2)}</p>
+                                    <p class="font-bold text-lg text-gray-900">${currency}${formatAmount(reminder.amount)}</p>
                                     <span class="inline-block px-2 py-1 text-xs rounded-full ${statusColor} mt-1">
                                         ${statusText}
                                     </span>
@@ -2236,7 +2244,7 @@ function reduceLoanAssets(repaymentAmount) {
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="font-bold text-lg text-blue-600">${currency}${Number(t.amount || 0).toFixed(2)}</p>
+                                        <p class="font-bold text-lg text-blue-600">${currency}${formatAmount(t.amount)}</p>
                                         <p class="text-xs text-gray-500">Transfer</p>
                                     </div>
                                 </div>
@@ -2267,7 +2275,7 @@ function reduceLoanAssets(repaymentAmount) {
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="font-bold text-lg ${amountColor}">${isIncome ? '+' : '-'}${currency}${Number(t.amount || 0).toFixed(2)}</p>
+                                        <p class="font-bold text-lg ${amountColor}">${isIncome ? '+' : '-'}${currency}${formatAmount(t.amount)}</p>
                                         <p class="text-xs text-gray-500">${t.account ? accounts.find(a => a.id === t.account)?.name || 'Account' : 'Cash'}</p>
                                     </div>
                                 </div>
@@ -2308,8 +2316,8 @@ function reduceLoanAssets(repaymentAmount) {
                             </div>
                             <div class="mb-2">
                                 <div class="flex justify-between text-sm mb-1">
-                                    <span>Spent: ${currency}${spent.toFixed(2)}</span>
-                                    <span>Budget: ${currency}${budget.amount.toFixed(2)}</span>
+                                    <span>Spent: ${currency}${formatAmount(spent)}</span>
+                                    <span>Budget: ${currency}${formatAmount(budget.amount)}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2">
                                     <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${Math.min(percentage, 100)}%"></div>
@@ -2317,7 +2325,7 @@ function reduceLoanAssets(repaymentAmount) {
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-sm ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                    ${remaining >= 0 ? 'Remaining' : 'Over'}: ${currency}${Math.abs(remaining).toFixed(2)}
+                                    ${remaining >= 0 ? 'Remaining' : 'Over'}: ${currency}${formatAmount(Math.abs(remaining))}
                                 </span>
                                 <div class="flex gap-2">
                                     <button onclick="editBudget('${budget.category}')" class="text-blue-500 hover:text-blue-700 text-sm">
@@ -2349,9 +2357,9 @@ function reduceLoanAssets(repaymentAmount) {
                 const expenseEl = document.getElementById('totalExpense');
                 const balanceEl = document.getElementById('balance');
                 const budgetEl = document.getElementById('budgetLeft');
-                if (incomeEl) incomeEl.textContent = currency + income.toFixed(2);
-                if (expenseEl) expenseEl.textContent = currency + expense.toFixed(2);
-                if (balanceEl) balanceEl.textContent = currency + (income - expense).toFixed(2);
+                if (incomeEl) incomeEl.textContent = currency + formatAmount(income);
+                if (expenseEl) expenseEl.textContent = currency + formatAmount(expense);
+                if (balanceEl) balanceEl.textContent = currency + formatAmount(income - expense);
                 if (budgetEl) budgetEl.textContent = currency + '0.00';
 
                 // Update financial position
@@ -2481,7 +2489,7 @@ function reduceLoanAssets(repaymentAmount) {
                                         <p class="text-sm text-gray-500 capitalize">${source.type.replace('-', ' ')}</p>
                                     </div>
                                 </div>
-                                <span class="font-semibold text-gray-900">${currency}${source.amount.toFixed(2)}</span>
+                                <span class="font-semibold text-gray-900">${currency}${formatAmount(source.amount)}</span>
                             </div>
                         `;
                     }).join('') :
@@ -2500,7 +2508,7 @@ function reduceLoanAssets(repaymentAmount) {
                                         <p class="text-sm text-gray-500 capitalize">${liability.type.replace('-', ' ')}</p>
                                     </div>
                                 </div>
-                                <span class="font-semibold text-red-600">${currency}${liability.amount.toFixed(2)}</span>
+                                <span class="font-semibold text-red-600">${currency}${formatAmount(liability.amount)}</span>
                             </div>
                         `;
                     }).join('') :
@@ -2513,7 +2521,7 @@ function reduceLoanAssets(repaymentAmount) {
                 // Calculate and display net worth
                 const netWorth = totalAssets - totalLiabilities;
                 if (netWorthEl) {
-                    netWorthEl.textContent = currency + netWorth.toFixed(2);
+                    netWorthEl.textContent = currency + formatAmount(netWorth);
                     netWorthEl.className = netWorth >= 0 ? 'text-3xl font-bold text-green-400' : 'text-3xl font-bold text-red-400';
                 }
             }
@@ -3630,7 +3638,7 @@ function reduceLoanAssets(repaymentAmount) {
                                 </div>
                                 <div class="text-right">
                                     <p class="font-bold text-lg ${isNegative ? 'text-red-600' : 'text-gray-900'}">
-                                        ${currency}${balance.toFixed(2)}
+                                        ${currency}${formatAmount(balance)}
                                     </p>
                                     <div class="flex space-x-2 mt-2">
                                         <button onclick="editAccount('${account.id}')" class="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
