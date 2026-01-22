@@ -2131,15 +2131,22 @@ function reduceLoanAssets(repaymentAmount) {
                                     <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${Math.min(percentage, 100)}%"></div>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-center">
+                            <div class="flex justify-between items-center gap-2">
                                 <span class="text-sm ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}">
                                     ${remaining >= 0 ? 'Remaining' : 'Over'}: ${currency}${Math.abs(remaining).toFixed(2)}
                                 </span>
-                                <button onclick="deleteBudget('${budget.category}')" class="text-red-500 hover:text-red-700 text-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
+                                <div class="flex gap-2">
+                                    <button onclick="editBudget('${budget.category}')" class="text-blue-500 hover:text-blue-700 text-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+                                    <button onclick="deleteBudget('${budget.category}')" class="text-red-500 hover:text-red-700 text-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -2378,7 +2385,20 @@ function reduceLoanAssets(repaymentAmount) {
                 document.getElementById('budgetAmount').value = '';
                 document.getElementById('budgetPeriod').value = 'monthly';
             }
-            function closeBudgetModal() { document.getElementById('budgetModal').classList.add('hidden'); }
+            function closeBudgetModal() { 
+                document.getElementById('budgetModal').classList.add('hidden');
+                // Reset button to "Set Budget"
+                const submitBtn = document.getElementById('budgetModal').querySelector('button[onclick*="addBudget"]') || 
+                                  document.getElementById('budgetModal').querySelector('button[onclick*="updateBudget"]');
+                if (submitBtn) {
+                    submitBtn.textContent = 'Set Budget';
+                    submitBtn.onclick = addBudget;
+                }
+                // Clear form fields
+                document.getElementById('budgetCategory').value = '';
+                document.getElementById('budgetAmount').value = '';
+                document.getElementById('budgetPeriod').value = 'monthly';
+            }
 
             function addBudget() {
                 const category = document.getElementById('budgetCategory').value;
@@ -2396,6 +2416,45 @@ function reduceLoanAssets(repaymentAmount) {
                 document.getElementById('budgetAmount').value = '';
                 document.getElementById('budgetPeriod').value = 'monthly';
                 renderBudgets();
+            }
+
+            function editBudget(category) {
+                const budget = budgets.find(b => b.category === category);
+                if (!budget) return;
+                
+                document.getElementById('budgetCategory').value = budget.category;
+                document.getElementById('budgetAmount').value = budget.amount;
+                document.getElementById('budgetPeriod').value = budget.period;
+                
+                // Change modal button to "Update" and set onclick to updateBudget
+                const modal = document.getElementById('budgetModal');
+                const submitBtn = modal.querySelector('button[onclick*="addBudget"]');
+                submitBtn.textContent = 'Update Budget';
+                submitBtn.onclick = () => updateBudget(category);
+                
+                modal.classList.remove('hidden');
+            }
+
+            function updateBudget(oldCategory) {
+                const newCategory = document.getElementById('budgetCategory').value;
+                const amount = parseFloat(document.getElementById('budgetAmount').value);
+                const period = document.getElementById('budgetPeriod').value;
+                
+                if (!newCategory || isNaN(amount) || amount <= 0) {
+                    alert('Please enter valid category and amount');
+                    return;
+                }
+                
+                const budget = budgets.find(b => b.category === oldCategory);
+                if (budget) {
+                    budget.category = newCategory;
+                    budget.amount = amount;
+                    budget.period = period;
+                    saveToFirebase();
+                    closeBudgetModal();
+                    renderBudgets();
+                    alert('Budget updated successfully!');
+                }
             }
 
             function deleteBudget(category) {
