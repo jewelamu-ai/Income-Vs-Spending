@@ -3029,21 +3029,21 @@ function reduceLoanAssets(repaymentAmount) {
                         return;
                     }
                     
-                    // For expenses, check if account has sufficient balance
+                    // For expenses, check if account has sufficient balance (with small precision tolerance)
                     if (currentType === 'expense') {
                         const selectedAccount = accounts.find(a => a.id === account);
                         const currentBalance = Number(selectedAccount?.balance || 0);
-                        if (amount > currentBalance) {
+                        if (amount > currentBalance + 0.0001) {
                             alert(`Insufficient balance! Account has ${currency}${currentBalance.toFixed(2)} but you're trying to spend ${currency}${amount.toFixed(2)}`);
                             return;
                         }
                     }
                     
-                    // For transfers, check if from-account has sufficient balance
+                    // For transfers, check if from-account has sufficient balance (with small precision tolerance)
                     if (currentType === 'transfer') {
                         const fromAcc = accounts.find(a => a.id === fromAccount);
                         const fromBalance = Number(fromAcc?.balance || 0);
-                        if (amount > fromBalance) {
+                        if (amount > fromBalance + 0.0001) {
                             alert(`Insufficient balance in "${fromAcc?.name || 'source account'}"! Current balance: ${currency}${fromBalance.toFixed(2)}`);
                             return;
                         }
