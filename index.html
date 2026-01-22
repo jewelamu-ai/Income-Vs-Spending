@@ -1065,6 +1065,10 @@ A professional budget tracking application with Firebase integration
     appId: "1:657417341954:web:08972dae3623bdd61f6b1b",
     measurementId: "G-BV3C6NY0B1"
         };
+        
+        if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR')) {
+            console.warn('⚠️ Firebase config incomplete! Replace placeholder values in firebaseConfig.');
+        }
 
         // Initialize Firebase
         let app, auth, db, currentUser = null;
@@ -2185,7 +2189,7 @@ function reduceLoanAssets(repaymentAmount) {
                     const accountType = account.type || 'cash';
 
                     if (balance > 0) {
-                        // Positive balance = Asset/Income Source
+                        // Positive balance = Asset/Inco Source
                         incomeSources.push({
                             name: account.name,
                             type: accountType,
@@ -2437,7 +2441,7 @@ function reduceLoanAssets(repaymentAmount) {
                         toAccount,
                         date,
                         description: transferDesc,
-                        id: Date.now().toString()
+                        id: Date.now().toString() + Math.random().toString(36).slice(2)
                     });
                     
                     // Update account balances
@@ -2462,7 +2466,8 @@ function reduceLoanAssets(repaymentAmount) {
                         category,
                         account,
                         date,
-                        description
+                        description,
+                        id: Date.now().toString() + Math.random().toString(36).slice(2)
                     });
                     
                     // Update account balance
@@ -2790,13 +2795,28 @@ function reduceLoanAssets(repaymentAmount) {
                 }
 
                 const newAccount = {
-                    id: Date.now().toString(), // Simple ID generation
+                    id: Date.now().toString() + Math.random().toString(36).slice(2),
                     name: name,
                     type: type,
-                    balance: balance
+                    balance: 0,
+                    archived: false
                 };
 
                 accounts.push(newAccount);
+                
+                // If initial balance is provided, create a transaction to persist it through recalculation
+                if (balance !== 0) {
+                    transactions.unshift({
+                        type: balance > 0 ? 'income' : 'expense',
+                        amount: Math.abs(balance),
+                        account: newAccount.id,
+                        date: new Date().toISOString().slice(0, 10),
+                        description: 'Initial balance',
+                        id: Date.now().toString() + Math.random().toString(36).slice(2),
+                        isInitial: true
+                    });
+                }
+                
                 console.log('Account added:', newAccount);
                 console.log('Total accounts:', accounts.length);
                 saveToFirebase();
@@ -3086,6 +3106,13 @@ function reduceLoanAssets(repaymentAmount) {
             }
 
             function deleteAccount(accountId) {
+                // Prevent deletion if account has transactions
+                const hasTransactions = transactions.some(t => t.account === accountId || t.fromAccount === accountId || t.toAccount === accountId);
+                if (hasTransactions) {
+                    alert('This account has transactions. Please reassign or delete them first.');
+                    return;
+                }
+                
                 if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) return;
 
                 accounts = accounts.filter(a => a.id !== accountId);

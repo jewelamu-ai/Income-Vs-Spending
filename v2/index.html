@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Budget Tracker v2</title>
+  <meta name="description" content="Simple offline-first budget tracker (v2)" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-indigo-50">
+  <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow">
+    <div class="max-w-5xl mx-auto p-4 flex items-center justify-between">
+      <h1 class="text-xl font-bold">Budget Tracker v2</h1>
+      <div id="syncBadge" class="text-xs bg-white/20 px-2 py-1 rounded">Local</div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 space-y-6">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="bg-white rounded-xl p-4 shadow">
+        <p class="text-gray-500 text-sm">Income</p>
+        <p id="sumIncome" class="text-lg font-bold">GHS0.00</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow">
+        <p class="text-gray-500 text-sm">Expenses</p>
+        <p id="sumExpense" class="text-lg font-bold">GHS0.00</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow">
+        <p class="text-gray-500 text-sm">Balance</p>
+        <p id="sumBalance" class="text-lg font-bold">GHS0.00</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow">
+        <p class="text-gray-500 text-sm">Accounts</p>
+        <p id="sumAccounts" class="text-lg font-bold">0</p>
+      </div>
+    </div>
+
+    <!-- Add Account -->
+    <section class="bg-white rounded-xl p-4 shadow">
+      <h2 class="font-semibold mb-3">Add Account</h2>
+      <div class="grid md:grid-cols-4 gap-3">
+        <input id="accName" class="border rounded-lg px-3 py-2" placeholder="Account name (e.g., Cash)" />
+        <select id="accType" class="border rounded-lg px-3 py-2">
+          <option value="cash">Cash</option>
+          <option value="bank">Bank</option>
+          <option value="credit">Credit</option>
+          <option value="momo">Mobile Money</option>
+        </select>
+        <input id="accInitial" type="number" step="0.01" class="border rounded-lg px-3 py-2" placeholder="Initial balance" />
+        <button id="btnAddAcc" class="bg-indigo-600 text-white rounded-lg px-4 py-2">Add</button>
+      </div>
+    </section>
+
+    <!-- Add Transaction -->
+    <section class="bg-white rounded-xl p-4 shadow">
+      <h2 class="font-semibold mb-3">Add Transaction</h2>
+      <div class="grid md:grid-cols-6 gap-3 items-center">
+        <select id="trxType" class="border rounded-lg px-3 py-2">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <input id="trxAmount" type="number" step="0.01" class="border rounded-lg px-3 py-2" placeholder="Amount" />
+        <select id="trxAccount" class="border rounded-lg px-3 py-2"></select>
+        <input id="trxDate" type="date" class="border rounded-lg px-3 py-2" />
+        <input id="trxNote" class="border rounded-lg px-3 py-2" placeholder="Note (optional)" />
+        <button id="btnAddTrx" class="bg-green-600 text-white rounded-lg px-4 py-2">Add</button>
+      </div>
+    </section>
+
+    <!-- Accounts List -->
+    <section class="bg-white rounded-xl p-4 shadow">
+      <h2 class="font-semibold mb-3">Accounts</h2>
+      <div id="accountsList" class="divide-y"></div>
+    </section>
+
+    <!-- Transactions List -->
+    <section class="bg-white rounded-xl p-4 shadow">
+      <h2 class="font-semibold mb-3">Transactions</h2>
+      <div id="transactionsList" class="divide-y"></div>
+    </section>
+  </main>
+
+  <footer class="text-center text-xs text-gray-500 py-6">Offline-first. Data stored locally.</footer>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(console.error);
+      });
+    }
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
