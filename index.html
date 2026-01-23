@@ -749,6 +749,9 @@ A professional budget tracking application with Firebase integration
                             <select id="toAccountSelect" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
                         </div>
                     </div>
+                    <div class="flex justify-end mt-2">
+                        <button onclick="setTransferFullAmount()" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Use full balance</button>
+                    </div>
                 </div>
 
                 <!-- Profile Transfer Fields -->
@@ -2967,7 +2970,6 @@ function reduceLoanAssets(repaymentAmount) {
                 budgets.push({ category, amount, period, spent: 0 });
                 saveToFirebase();
                 closeBudgetModal();
-                // Clear form fields
                 document.getElementById('budgetCategory').value = '';
                 document.getElementById('budgetAmount').value = '';
                 document.getElementById('budgetPeriod').value = 'monthly';
@@ -3000,17 +3002,15 @@ function reduceLoanAssets(repaymentAmount) {
                     alert('Please enter valid category and amount');
                     return;
                 }
-                
                 const budget = budgets.find(b => b.category === oldCategory);
-                if (budget) {
-                    budget.category = newCategory;
-                    budget.amount = amount;
-                    budget.period = period;
-                    saveToFirebase();
-                    closeBudgetModal();
-                    renderBudgets();
-                    alert('Budget updated successfully!');
-                }
+                if (!budget) return;
+                budget.category = newCategory;
+                budget.amount = amount;
+                budget.period = period;
+                saveToFirebase();
+                closeBudgetModal();
+                renderBudgets();
+                alert('Budget updated successfully!');
             }
 
             function deleteBudget(category) {
@@ -3019,6 +3019,23 @@ function reduceLoanAssets(repaymentAmount) {
                     saveToFirebase();
                     renderBudgets();
                 }
+            }
+
+            // Set amount to full balance of selected source account (transfers)
+            function setTransferFullAmount() {
+                if (currentType !== 'transfer') return;
+                const fromAccountId = document.getElementById('fromAccountSelect')?.value;
+                if (!fromAccountId) {
+                    alert('Please select the source account first');
+                    return;
+                }
+                const fromAcc = accounts.find(a => a.id === fromAccountId);
+                if (!fromAcc) {
+                    alert('Source account not found');
+                    return;
+                }
+                const balance = Number(fromAcc.balance || 0);
+                document.getElementById('amount').value = balance.toFixed(2);
             }
 
             function addTransaction() {
