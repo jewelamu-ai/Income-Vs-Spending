@@ -267,8 +267,8 @@ A professional budget tracking application with Firebase integration
 
                 <!-- Account Selector -->
                 <div class="mb-4">
-                    <select id="accountSelector" onchange="switchAccount()" class="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2 w-full backdrop-blur-sm">
-                        <option value="default">All Accounts</option>
+                    <select id="accountSelector" onchange="switchAccount()" class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-2 border-white/50 rounded-lg px-4 py-2 w-full font-semibold hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer">
+                        <option value="default" style="background-color: #4F46E5; color: white;">📊 All Accounts</option>
                     </select>
                 </div>
 
@@ -2175,11 +2175,48 @@ function reduceLoanAssets(repaymentAmount) {
                 if (!el) return;
                 const current = el.value || 'default';
                 el.innerHTML = '';
+                
+                // Add "All Accounts" option for main selector only
+                if (id === 'accountSelector') {
+                    el.innerHTML += `<option value="default" style="background-color: #4F46E5; color: white;">📊 All Accounts</option>`;
+                }
+                
+                // Add all accounts with icons and colors
                 accounts.forEach(acc => {
-                    el.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    const icon = getAccountIcon(acc.type);
+                    const bgColor = getAccountBgColor(acc.type);
+                    el.innerHTML += `<option value="${acc.id}" style="background-color: ${bgColor}; color: white; padding: 8px;">${icon} ${acc.name}</option>`;
                 });
                 try { el.value = current; } catch (e) { /* ignore */ }
             });
+        }
+        
+        function getAccountIcon(type) {
+            const icons = {
+                'cash': '💵',
+                'bank': '🏦',
+                'credit': '💳',
+                'mtn-momo': '🟡',
+                'telecel-cash': '🟣',
+                'investment': '📈',
+                'asset': '🏠',
+                'debt': '💰'
+            };
+            return icons[type] || '💰';
+        }
+        
+        function getAccountBgColor(type) {
+            const colors = {
+                'cash': '#22C55E',
+                'bank': '#3B82F6',
+                'credit': '#EF4444',
+                'mtn-momo': '#FBBF24',
+                'telecel-cash': '#A855F7',
+                'investment': '#8B5CF6',
+                'asset': '#14B8A6',
+                'debt': '#F97316'
+            };
+            return colors[type] || '#6366F1';
         }
 
             // Minimal safe stubs so the page can initialize without throwing
@@ -2275,6 +2312,19 @@ function reduceLoanAssets(repaymentAmount) {
                     filteredTransactions = transactions.filter(t => t.type === 'expense');
                 } else if (currentFilter === 'transfer') {
                     filteredTransactions = transactions.filter(t => t.type === 'transfer');
+                }
+                
+                // Filter by account if not "All Accounts"
+                if (currentAccount !== 'default') {
+                    filteredTransactions = filteredTransactions.filter(t => {
+                        if (t.type === 'transfer') {
+                            return t.fromAccount === currentAccount || t.toAccount === currentAccount;
+                        } else if (t.type === 'profile-transfer') {
+                            return t.fromProfile === currentProfileId; // Show all profile transfers for this profile
+                        } else {
+                            return t.account === currentAccount;
+                        }
+                    });
                 }
 
                 // Apply search filter
@@ -2674,6 +2724,20 @@ function reduceLoanAssets(repaymentAmount) {
 
             function switchAccount() {
                 currentAccount = document.getElementById('accountSelector').value;
+                const selector = document.getElementById('accountSelector');
+                const selectedOption = selector.options[selector.selectedIndex];
+                
+                // Update selector background color based on selection
+                if (currentAccount === 'default') {
+                    selector.style.backgroundImage = 'linear-gradient(to right, #4F46E5, #A855F7)';
+                } else {
+                    const account = accounts.find(a => a.id === currentAccount);
+                    if (account) {
+                        const bgColor = getAccountBgColor(account.type);
+                        selector.style.backgroundColor = bgColor;
+                    }
+                }
+                
                 renderTransactions();
                 updateTotals();
             }
