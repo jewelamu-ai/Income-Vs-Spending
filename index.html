@@ -802,7 +802,7 @@ A professional budget tracking application with Firebase integration
                     <p class="text-xs text-gray-500 mt-1">Bank fees, transfer charges, etc. (deducted from account)</p>
                 </div>
 
-                <button onclick="addTransaction()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
+                <button onclick="saveTransaction()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
                     Add Transaction
                 </button>
             </div>
@@ -1372,6 +1372,7 @@ A professional budget tracking application with Firebase integration
         let currentAccount = 'default';
         let currency = 'GHS';
         let analyticsChart = null;
+        let editingTransactionId = null; // Track if editing a transaction
         
         // Email notification settings
         let emailNotifications = {
@@ -2403,9 +2404,23 @@ function reduceLoanAssets(repaymentAmount) {
                                             <p class="text-sm text-gray-500">${fromAccountName} → ${toAccountName} • ${formatDateTime(t.date)}</p>
                                             ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600 mt-1">Charge: ${currency}${formatAmount(t.charge)}</p>` : ''}\n                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="font-bold text-lg text-blue-600">${currency}${formatAmount(t.amount)}</p>
-                                        ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}\n                                        <p class="text-xs text-gray-500">Transfer</p>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-right">
+                                            <p class="font-bold text-lg text-blue-600">${currency}${formatAmount(t.amount)}</p>
+                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}\n                                            <p class="text-xs text-gray-500">Transfer</p>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button onclick="editTransaction('${t.id}')" class="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-600" title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                            </button>
+                                            <button onclick="deleteTransaction('${t.id}')" class="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600" title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2434,9 +2449,23 @@ function reduceLoanAssets(repaymentAmount) {
                                         <p class="text-sm text-gray-500">${t.category || ''} • ${formatDateTime(t.date)}</p>
                                         ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600 mt-1">Charge: ${currency}${formatAmount(t.charge)}</p>` : ''}\n                                        </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="font-bold text-lg ${amountColor}">${isIncome ? '+' : '-'}${currency}${formatAmount(t.amount)}</p>
-                                        ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}\n                                        <p class="text-xs text-gray-500">${t.account ? accounts.find(a => a.id === t.account)?.name || 'Account' : 'Cash'}</p>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-right">
+                                            <p class="font-bold text-lg ${amountColor}">${isIncome ? '+' : '-'}${currency}${formatAmount(t.amount)}</p>
+                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}\n                                            <p class="text-xs text-gray-500">${t.account ? accounts.find(a => a.id === t.account)?.name || 'Account' : 'Cash'}</p>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button onclick="editTransaction('${t.id}')" class="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-600" title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                            </button>
+                                            <button onclick="deleteTransaction('${t.id}')" class="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600" title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3057,15 +3086,30 @@ function reduceLoanAssets(repaymentAmount) {
             }
 
             function openTransactionModal() { 
-                document.getElementById('transactionModal').classList.remove('hidden'); 
+                editingTransactionId = null;
+                const modal = document.getElementById('transactionModal');
+                const h2 = modal.querySelector('h2');
+                const btn = modal.querySelector('button[onclick*="saveTransaction"]');
+                if (h2) h2.textContent = 'Add Transaction';
+                if (btn) {
+                    btn.textContent = 'Add Transaction';
+                }
+                document.getElementById('amount').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('transactionCharge').value = '';
+                document.getElementById('date').value = new Date().toISOString().slice(0, 16);
+                setType('expense');
+                modal.classList.remove('hidden');
                 updateProfileTransferSelectors();
-                // Add event listeners for profile selection
                 const fromProfileSelect = document.getElementById('fromProfileSelect');
                 const toProfileSelect = document.getElementById('toProfileSelect');
                 if (fromProfileSelect) fromProfileSelect.onchange = updateProfileTransferAccounts;
                 if (toProfileSelect) toProfileSelect.onchange = updateProfileTransferAccounts;
             }
-            function closeTransactionModal() { document.getElementById('transactionModal').classList.add('hidden'); }
+            function closeTransactionModal() { 
+                editingTransactionId = null;
+                document.getElementById('transactionModal').classList.add('hidden');
+            }
             function openBudgetModal() { 
                 document.getElementById('budgetModal').classList.remove('hidden');
                 // Clear form fields when opening
@@ -3165,6 +3209,14 @@ function reduceLoanAssets(repaymentAmount) {
                 }
                 const balance = Number(fromAcc.balance || 0);
                 document.getElementById('amount').value = balance.toFixed(2);
+            }
+
+            function saveTransaction() {
+                if (editingTransactionId) {
+                    updateTransaction();
+                } else {
+                    addTransaction();
+                }
             }
 
             function addTransaction() {
@@ -3315,6 +3367,254 @@ function reduceLoanAssets(repaymentAmount) {
                 renderAccounts();
                 renderBudgets();
                 alert('Transaction added successfully!');
+            }
+
+            function editTransaction(transactionId) {
+                const transaction = transactions.find(t => t.id === transactionId);
+                if (!transaction) {
+                    alert('Transaction not found');
+                    return;
+                }
+                
+                // Set editing mode
+                editingTransactionId = transactionId;
+                
+                // Set transaction type
+                setType(transaction.type);
+                
+                // Pre-fill form fields
+                document.getElementById('amount').value = transaction.amount;
+                document.getElementById('date').value = transaction.date;
+                document.getElementById('description').value = transaction.description || '';
+                document.getElementById('transactionCharge').value = transaction.charge || 0;
+                
+                // Pre-fill based on type
+                if (transaction.type === 'transfer') {
+                    document.getElementById('fromAccountSelect').value = transaction.fromAccount;
+                    document.getElementById('toAccountSelect').value = transaction.toAccount;
+                } else if (transaction.type === 'profile-transfer') {
+                    document.getElementById('fromProfileSelect').value = transaction.fromProfile;
+                    document.getElementById('toProfileSelect').value = transaction.toProfile;
+                } else {
+                    // Income or Expense
+                    document.getElementById('category').value = transaction.category;
+                    document.getElementById('accountSelect').value = transaction.account;
+                }
+                
+                // Change button text and action
+                const submitBtn = document.querySelector('#transactionModal button[onclick*="addTransaction"]');
+                if (submitBtn) {
+                    submitBtn.textContent = 'Update Transaction';
+                    submitBtn.onclick = () => updateTransaction();
+                }
+                
+                // Show modal
+                const modal = document.getElementById('transactionModal');
+                modal.classList.remove('hidden');
+            }
+
+            function updateTransaction() {
+                const transactionId = editingTransactionId;
+                if (!transactionId) {
+                    alert('No transaction selected for editing');
+                    return;
+                }
+
+                const transaction = transactions.find(t => t.id === transactionId);
+                if (!transaction) {
+                    alert('Transaction not found');
+                    return;
+                }
+
+                const amount = parseFloat(document.getElementById('amount').value);
+                const date = document.getElementById('date').value;
+                const description = document.getElementById('description').value;
+                const transactionCharge = parseFloat(document.getElementById('transactionCharge').value) || 0;
+
+                if (isNaN(amount) || amount <= 0 || !date) {
+                    alert('Please enter valid amount and date');
+                    return;
+                }
+
+                if (transactionCharge < 0) {
+                    alert('Transaction charge cannot be negative');
+                    return;
+                }
+
+                // Reverse old transaction effects
+                if (transaction.type === 'transfer') {
+                    const fromAcc = accounts.find(a => a.id === transaction.fromAccount);
+                    const toAcc = accounts.find(a => a.id === transaction.toAccount);
+                    if (fromAcc) {
+                        fromAcc.balance += transaction.amount;
+                        if (transaction.charge > 0) {
+                            fromAcc.balance += transaction.charge;
+                        }
+                    }
+                    if (toAcc) {
+                        toAcc.balance -= transaction.amount;
+                    }
+                } else if (transaction.type !== 'profile-transfer') {
+                    const account = accounts.find(a => a.id === transaction.account);
+                    if (account) {
+                        if (transaction.type === 'income') {
+                            account.balance -= transaction.amount;
+                            if (transaction.charge > 0) {
+                                account.balance += transaction.charge;
+                            }
+                        } else if (transaction.type === 'expense') {
+                            account.balance += transaction.amount;
+                            if (transaction.charge > 0) {
+                                account.balance += transaction.charge;
+                            }
+                            // Reverse budget spent
+                            const budget = budgets.find(b => b.category === transaction.category);
+                            if (budget) {
+                                budget.spent -= transaction.amount;
+                            }
+                        }
+                    }
+                }
+
+                // Update transaction with new values
+                if (transaction.type === 'profile-transfer') {
+                    const fromProfile = document.getElementById('fromProfileSelect').value;
+                    const toProfile = document.getElementById('toProfileSelect').value;
+                    transaction.amount = amount;
+                    transaction.date = date;
+                    transaction.description = description;
+                    transaction.charge = transactionCharge;
+                    transaction.fromProfile = fromProfile;
+                    transaction.toProfile = toProfile;
+                } else if (transaction.type === 'transfer') {
+                    const fromAccount = document.getElementById('fromAccountSelect').value;
+                    const toAccount = document.getElementById('toAccountSelect').value;
+                    transaction.amount = amount;
+                    transaction.date = date;
+                    transaction.description = description;
+                    transaction.charge = transactionCharge;
+                    transaction.fromAccount = fromAccount;
+                    transaction.toAccount = toAccount;
+                    
+                    // Apply new transaction effects
+                    const fromAcc = accounts.find(a => a.id === fromAccount);
+                    const toAcc = accounts.find(a => a.id === toAccount);
+                    if (fromAcc) {
+                        fromAcc.balance -= amount;
+                        if (transactionCharge > 0) {
+                            fromAcc.balance -= transactionCharge;
+                        }
+                    }
+                    if (toAcc) {
+                        toAcc.balance += amount;
+                    }
+                } else {
+                    const category = document.getElementById('category').value;
+                    const account = document.getElementById('accountSelect').value;
+                    
+                    transaction.amount = amount;
+                    transaction.date = date;
+                    transaction.description = description;
+                    transaction.category = category;
+                    transaction.account = account;
+                    transaction.charge = transactionCharge;
+                    
+                    // Apply new transaction effects
+                    const selectedAccount = accounts.find(a => a.id === account);
+                    if (selectedAccount) {
+                        if (transaction.type === 'income') {
+                            selectedAccount.balance += amount;
+                            if (transactionCharge > 0) {
+                                selectedAccount.balance -= transactionCharge;
+                            }
+                        } else if (transaction.type === 'expense') {
+                            selectedAccount.balance -= amount;
+                            if (transactionCharge > 0) {
+                                selectedAccount.balance -= transactionCharge;
+                            }
+                            // Update budget spent
+                            updateBudgetSpent(category, amount);
+                        }
+                    }
+                }
+
+                editingTransactionId = null;
+                saveToFirebase();
+                closeTransactionModal();
+                document.getElementById('amount').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('transactionCharge').value = '';
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                renderBudgets();
+                alert('Transaction updated successfully!');
+            }
+
+            function deleteTransaction(transactionId) {
+                const transaction = transactions.find(t => t.id === transactionId);
+                if (!transaction) {
+                    alert('Transaction not found');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to delete this transaction?')) {
+                    return;
+                }
+
+                // Reverse transaction effects
+                if (transaction.type === 'transfer') {
+                    const fromAcc = accounts.find(a => a.id === transaction.fromAccount);
+                    const toAcc = accounts.find(a => a.id === transaction.toAccount);
+                    if (fromAcc) {
+                        fromAcc.balance += transaction.amount;
+                        if (transaction.charge > 0) {
+                            fromAcc.balance += transaction.charge;
+                        }
+                    }
+                    if (toAcc) {
+                        toAcc.balance -= transaction.amount;
+                    }
+                } else if (transaction.type !== 'profile-transfer') {
+                    const account = accounts.find(a => a.id === transaction.account);
+                    if (account) {
+                        if (transaction.type === 'income') {
+                            account.balance -= transaction.amount;
+                            if (transaction.charge > 0) {
+                                account.balance += transaction.charge;
+                            }
+                            if (transaction.category === 'Loan Repayment') {
+                                // Reverse loan reduction
+                                assets = assets.map(asset => {
+                                    if (asset.category === 'loan') {
+                                        asset.value += transaction.amount;
+                                    }
+                                    return asset;
+                                });
+                            }
+                        } else if (transaction.type === 'expense') {
+                            account.balance += transaction.amount;
+                            if (transaction.charge > 0) {
+                                account.balance += transaction.charge;
+                            }
+                            // Reverse budget spent
+                            const budget = budgets.find(b => b.category === transaction.category);
+                            if (budget) {
+                                budget.spent -= transaction.amount;
+                            }
+                        }
+                    }
+                }
+
+                // Remove transaction
+                transactions = transactions.filter(t => t.id !== transactionId);
+                editingTransactionId = null;
+                saveToFirebase();
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                renderBudgets();
+                alert('Transaction deleted successfully!');
             }
 
             function setFilter(filter, event) {
