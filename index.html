@@ -1062,6 +1062,24 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
+    <!-- Category Details Modal -->
+    <div id="categoryDetailsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-3xl w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="categoryDetailsTitle" class="text-2xl font-bold text-gray-800">Category Details</h2>
+                <button onclick="closeCategoryDetails()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="categoryDetailsContent" class="space-y-3">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <!-- Profile Management Modal -->
     <div id="profileModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50">
         <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6">
@@ -4965,9 +4983,9 @@ function reduceLoanAssets(repaymentAmount) {
                                 .map(([category, amount]) => {
                                     const percentage = ((amount / totalSpent) * 100).toFixed(1);
                                     return `
-                                        <div class="py-2 border-b border-gray-100">
+                                        <div class="py-2 border-b border-gray-100 hover:bg-gray-50 rounded p-2 cursor-pointer transition-colors" onclick="showCategoryDetails('${category}', '${dateFrom}', '${dateTo}')">
                                             <div class="flex justify-between items-center mb-1">
-                                                <span class="text-gray-700">${category}</span>
+                                                <span class="text-gray-700 font-medium">${category}</span>
                                                 <span class="font-semibold text-gray-900">${currency}${formatAmount(amount)}</span>
                                             </div>
                                             <div class="flex items-center gap-2">
@@ -4976,6 +4994,7 @@ function reduceLoanAssets(repaymentAmount) {
                                                 </div>
                                                 <span class="text-xs text-gray-500">${percentage}%</span>
                                             </div>
+                                            <p class="text-xs text-indigo-600 mt-1">👆 Click to see all items</p>
                                         </div>
                                     `;
                                 }).join('')}
@@ -5160,6 +5179,83 @@ function reduceLoanAssets(repaymentAmount) {
                 document.getElementById('analyticsDateFrom').value = '';
                 document.getElementById('analyticsDateTo').value = '';
                 updateAnalytics();
+            }
+
+            function showCategoryDetails(category, dateFrom, dateTo) {
+                const modal = document.getElementById('categoryDetailsModal');
+                const titleEl = document.getElementById('categoryDetailsTitle');
+                const contentEl = document.getElementById('categoryDetailsContent');
+
+                // Filter transactions for this category within date range
+                let categoryTransactions = transactions.filter(t => {
+                    if (t.type !== 'expense' || t.category !== category) return false;
+                    
+                    // Apply date range filter
+                    if (dateFrom || dateTo) {
+                        const transactionDate = new Date(t.date);
+                        let matchesDate = true;
+                        
+                        if (dateFrom) {
+                            const fromDate = new Date(dateFrom);
+                            matchesDate = matchesDate && transactionDate >= fromDate;
+                        }
+                        if (dateTo) {
+                            const toDate = new Date(dateTo);
+                            toDate.setHours(23, 59, 59, 999);
+                            matchesDate = matchesDate && transactionDate <= toDate;
+                        }
+                        
+                        return matchesDate;
+                    }
+                    
+                    return true;
+                });
+
+                // Sort by date (newest first)
+                categoryTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Calculate total
+                const totalAmount = categoryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+                // Update title
+                titleEl.textContent = `${category} - ${categoryTransactions.length} items (${currency}${formatAmount(totalAmount)})`;
+
+                // Render transactions
+                contentEl.innerHTML = categoryTransactions.length === 0 
+                    ? '<div class="text-center py-8"><p class="text-gray-500">No transactions found</p></div>'
+                    : categoryTransactions.map((t, index) => {
+                        const dateObj = new Date(t.date);
+                        const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        const accountName = accounts.find(a => a.id === t.account)?.name || 'Unknown Account';
+                        
+                        return `
+                            <div class="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-3">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="text-sm font-semibold text-gray-800">${t.description || 'Expense'}</span>
+                                            <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">${accountName}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-600 space-y-0.5">
+                                            <div>📅 ${dateStr} at ${timeStr}</div>
+                                            ${t.charge && t.charge > 0 ? `<div class="text-orange-600">⚠️ Charge: ${currency}${formatAmount(t.charge)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-bold text-red-600">-${currency}${formatAmount(Math.abs(t.amount))}</div>
+                                        ${t.charge && t.charge > 0 ? `<div class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                modal.classList.remove('hidden');
+            }
+
+            function closeCategoryDetails() {
+                document.getElementById('categoryDetailsModal').classList.add('hidden');
             }
             
             // ============================================
