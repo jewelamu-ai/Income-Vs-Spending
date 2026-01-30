@@ -5031,13 +5031,29 @@ function reduceLoanAssets(repaymentAmount) {
                                 data: sortedMonths.map(month => monthlyData[month].income),
                                 borderColor: '#10B981',
                                 backgroundColor: '#10B98120',
-                                tension: 0.4
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 5,
+                                pointBackgroundColor: '#10B981'
                             }, {
                                 label: 'Expenses',
                                 data: sortedMonths.map(month => monthlyData[month].expense),
                                 borderColor: '#EF4444',
                                 backgroundColor: '#EF444420',
-                                tension: 0.4
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 5,
+                                pointBackgroundColor: '#EF4444'
+                            }, {
+                                label: 'Net Income (Income - Expenses)',
+                                data: sortedMonths.map(month => monthlyData[month].income - monthlyData[month].expense),
+                                borderColor: '#3B82F6',
+                                backgroundColor: '#3B82F620',
+                                tension: 0.4,
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 4,
+                                pointBackgroundColor: '#3B82F6'
                             }]
                         },
                         options: {
@@ -5045,7 +5061,13 @@ function reduceLoanAssets(repaymentAmount) {
                             plugins: {
                                 title: {
                                     display: true,
-                                    text: 'Monthly Income vs Expenses'
+                                    text: 'Monthly Income vs Expenses Trend',
+                                    font: { size: 16, weight: 'bold' },
+                                    padding: 20
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top'
                                 }
                             },
                             scales: {
