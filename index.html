@@ -1439,14 +1439,83 @@ A professional budget tracking application with Firebase integration
         let calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory') || '[]');
 
         // ============================================
+        // SESSION MANAGEMENT
+        // ============================================
+        window.sessionId = null;
+        
+        async function checkAndCreateSession() {
+            if (!currentUser) return false;
+            
+            try {
+                // Generate unique session ID for this login
+                window.sessionId = currentUser.uid + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Get current session from Firebase
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (userDoc.exists) {
+                    const data = userDoc.data();
+                    const existingSessionId = data.sessionId;
+                    
+                    // Update with new session
+                    await db.collection('users').doc(currentUser.uid).update({
+                        sessionId: window.sessionId,
+                        lastLoginTime: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // If there was an existing different session, another device was logged in
+                    return !existingSessionId || existingSessionId === window.sessionId;
+                } else {
+                    // First time user, create session
+                    await db.collection('users').doc(currentUser.uid).set({
+                        sessionId: window.sessionId,
+                        lastLoginTime: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    return true;
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+                return true; // Allow login if there's an error
+            }
+        }
+        
+        // Periodically check if session is still valid
+        function startSessionMonitoring() {
+            setInterval(async () => {
+                if (!currentUser || !window.sessionId) return;
+                
+                try {
+                    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                    if (userDoc.exists) {
+                        const data = userDoc.data();
+                        if (data.sessionId && data.sessionId !== window.sessionId) {
+                            // Session was invalidated by another login
+                            alert('You have been logged out because this account was accessed from another device.');
+                            await auth.signOut();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Session monitoring error:', error);
+                }
+            }, 30000); // Check every 30 seconds
+        }
+
+        // ============================================
         // AUTHENTICATION
         // ============================================
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async user => {
             // Add auth-ready class to body to show content
             document.body.classList.add('auth-ready');
             
             if (user) {
                 currentUser = user;
+                
+                // Check for existing session and enforce single device login
+                const sessionAllowed = await checkAndCreateSession();
+                if (!sessionAllowed) {
+                    alert('This account is already logged in on another device. You will be logged out from the other device.');
+                }
+                
                 document.getElementById('loginScreen').classList.remove('show-login');
                 document.getElementById('mainApp').classList.add('show-app');
                 document.getElementById('fabButton').classList.remove('hidden'); // Show FAB button
@@ -1456,6 +1525,9 @@ A professional budget tracking application with Firebase integration
                 // Start auto-logout functionality
                 setupActivityTracking();
                 startAutoLogoutTimer();
+                
+                // Start session monitoring
+                startSessionMonitoring();
 
                 loadFirebaseData();
             } else {
@@ -1694,23 +1766,46 @@ A professional budget tracking application with Firebase integration
                 
                 if (userDoc.exists) {
                     const data = userDoc.data();
-                    profiles = data.profiles || [];
-                    transactions = data.transactions || [];
-                    budgets = data.budgets || [];
-                    accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
-                    recurring = data.recurring || [];
-                    reminders = data.reminders || [];
-                    assets = data.assets || [];
-                    liabilities = data.liabilities || [];
-                    currency = data.currency || 'GHS';
-                    currentProfileId = data.currentProfileId || null;
+                    const serverLastUpdated = data.lastUpdated ? data.lastUpdated.toMillis() : 0;
                     
-                    console.log('Loaded from Firebase, profiles:', profiles.length, 'accounts:', accounts.length);
+                    // Check localStorage for last update time
+                    const backup = localStorage.getItem('budgetTracker_backup');
+                    let localLastUpdated = 0;
+                    if (backup) {
+                        try {
+                            const localData = JSON.parse(backup);
+                            localLastUpdated = localData.lastUpdated || 0;
+                        } catch (e) {
+                            console.error('Error parsing local backup:', e);
+                        }
+                    }
                     
-                    // Save to localStorage as backup
-                    localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                        profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
-                    }));
+                    // Use server data if it's newer or if no local data
+                    if (serverLastUpdated >= localLastUpdated || !backup) {
+                        profiles = data.profiles || [];
+                        transactions = data.transactions || [];
+                        budgets = data.budgets || [];
+                        accounts = data.accounts || [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
+                        recurring = data.recurring || [];
+                        reminders = data.reminders || [];
+                        assets = data.assets || [];
+                        liabilities = data.liabilities || [];
+                        currency = data.currency || 'GHS';
+                        currentProfileId = data.currentProfileId || null;
+                        
+                        console.log('Loaded from Firebase (server data is newer), profiles:', profiles.length, 'accounts:', accounts.length);
+                        
+                        // Save to localStorage as backup with timestamp
+                        localStorage.setItem('budgetTracker_backup', JSON.stringify({
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                            lastUpdated: serverLastUpdated
+                        }));
+                    } else {
+                        // Local data is newer, load from localStorage and sync to server
+                        console.log('Local data is newer than server, syncing local data to server');
+                        loadFromLocalStorage();
+                        await saveToFirebase();
+                    }
                     
                     // Recalculate account balances based on transactions to ensure accuracy
                     recalculateAccountBalances();
@@ -1732,11 +1827,14 @@ A professional budget tracking application with Firebase integration
         }
         async function saveToFirebase() {
             console.log('saveToFirebase called, profiles:', profiles.length);
+            const currentTimestamp = Date.now();
+            
             if (!currentUser) {
                 // Save to localStorage only
                 console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    lastUpdated: currentTimestamp
                 }));
                 return;
             }
@@ -1756,12 +1854,14 @@ A professional budget tracking application with Firebase integration
                     liabilities,
                     currency,
                     currentProfileId,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    sessionId: window.sessionId
                 });
                 
-                // Also save to localStorage as backup
+                // Also save to localStorage as backup with timestamp
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    lastUpdated: currentTimestamp
                 }));
                 console.log('Saved to Firebase successfully');
                 
@@ -1771,7 +1871,8 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    lastUpdated: currentTimestamp
                 }));
             }
         }
@@ -1791,6 +1892,7 @@ A professional budget tracking application with Firebase integration
                 liabilities = data.liabilities || [];
                 currency = data.currency || 'GHS';
                 currentProfileId = data.currentProfileId || null;
+                // Don't load lastUpdated into the global scope, keep it for comparison only
                 
                 console.log('Loaded from localStorage, profiles:', profiles.length, 'accounts:', accounts.length);
                 
