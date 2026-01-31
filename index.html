@@ -493,6 +493,7 @@ A professional budget tracking application with Firebase integration
                     <div class="flex flex-wrap gap-3 items-center">
                         <select id="analyticsType" class="px-4 py-2 border rounded-lg" onchange="updateAnalytics()">
                             <option value="category">By Category</option>
+                            <option value="incomeSources">Income Sources</option>
                             <option value="monthly">Monthly Trend</option>
                             <option value="comparison">Income vs Expense</option>
                         </select>
@@ -1079,6 +1080,24 @@ A professional budget tracking application with Firebase integration
             </div>
 
             <div id="categoryDetailsContent" class="space-y-3">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Source Details Modal -->
+    <div id="incomeSourceDetailsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-3xl w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="incomeSourceDetailsTitle" class="text-2xl font-bold text-gray-800">Income Source Details</h2>
+                <button onclick="closeIncomeSourceDetails()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="incomeSourceDetailsContent" class="space-y-3">
                 <!-- Content will be populated by JavaScript -->
             </div>
         </div>
@@ -4042,7 +4061,7 @@ function reduceLoanAssets(repaymentAmount) {
             function closeReminderModal() { 
                 document.getElementById('reminderModal').classList.add('hidden'); 
             }
-            function addAccount() { 
+            async function addAccount() { 
                 const name = document.getElementById('accountName').value.trim();
                 const type = document.getElementById('accountType').value;
                 const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
@@ -4083,7 +4102,7 @@ function reduceLoanAssets(repaymentAmount) {
                 
                 console.log('Account added:', newAccount);
                 console.log('Total accounts:', accounts.length);
-                saveToFirebase();
+                await saveToFirebase();
                 closeAccountModal();
                 updateAccountSelectors();
                 renderAccounts();
@@ -4335,10 +4354,10 @@ function reduceLoanAssets(repaymentAmount) {
                 openAccountModal();
             }
 
-            function updateAccount(accountId) {
+            async function updateAccount(accountId) {
                 const name = document.getElementById('accountName').value.trim();
                 const type = document.getElementById('accountType').value;
-                const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
+                const newBalance = parseFloat(document.getElementById('accountBalance').value) || 0;
 
                 if (!name) {
                     alert('Please enter an account name');
@@ -4348,20 +4367,44 @@ function reduceLoanAssets(repaymentAmount) {
                 const accountIndex = accounts.findIndex(a => a.id === accountId);
                 if (accountIndex === -1) return;
 
+                const account = accounts[accountIndex];
+                const oldBalance = account.balance || 0;
+
                 // Check if account name already exists (excluding current account)
                 if (accounts.some((acc, index) => index !== accountIndex && acc.name.toLowerCase() === name.toLowerCase())) {
                     alert('An account with this name already exists');
                     return;
                 }
 
+                // Update account name and type
                 accounts[accountIndex] = {
                     ...accounts[accountIndex],
                     name,
-                    type,
-                    balance
+                    type
                 };
 
-                saveToFirebase();
+                // If balance changed, create an adjustment transaction
+                if (newBalance !== oldBalance) {
+                    const difference = newBalance - oldBalance;
+                    const adjustmentTransaction = {
+                        id: Date.now().toString() + Math.random().toString(36).slice(2),
+                        type: difference > 0 ? 'income' : 'expense',
+                        amount: Math.abs(difference),
+                        account: accountId,
+                        date: new Date().toISOString().slice(0, 10),
+                        time: new Date().toTimeString().slice(0, 5),
+                        description: 'Balance adjustment',
+                        category: 'Other',
+                        isAdjustment: true
+                    };
+                    
+                    transactions.push(adjustmentTransaction);
+                    
+                    // Recalculate balances after adding adjustment
+                    recalculateAccountBalances();
+                }
+
+                await saveToFirebase();
                 closeAccountModal();
                 updateAccountSelectors();
                 renderAccounts();
@@ -4369,7 +4412,7 @@ function reduceLoanAssets(repaymentAmount) {
                 alert('Account updated successfully!');
             }
 
-            function deleteAccount(accountId) {
+            async function deleteAccount(accountId) {
                 // Prevent deletion if account has transactions
                 const hasTransactions = transactions.some(t => t.account === accountId || t.fromAccount === accountId || t.toAccount === accountId);
                 if (hasTransactions) {
@@ -4380,7 +4423,7 @@ function reduceLoanAssets(repaymentAmount) {
                 if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) return;
 
                 accounts = accounts.filter(a => a.id !== accountId);
-                saveToFirebase();
+                await saveToFirebase();
                 updateAccountSelectors();
                 renderAccounts();
                 updateFinancialPosition();
@@ -4524,7 +4567,7 @@ function reduceLoanAssets(repaymentAmount) {
                 if (modal) modal.classList.add('hidden');
             }
 
-            function addAsset() {
+            async function addAsset() {
                 const name = document.getElementById('assetName').value.trim();
                 const category = document.getElementById('assetCategory').value;
                 const value = parseFloat(document.getElementById('assetValue').value);
@@ -4546,14 +4589,14 @@ function reduceLoanAssets(repaymentAmount) {
                 };
 
                 assets.push(newAsset);
-                saveToFirebase();
+                await saveToFirebase();
                 closeAssetModal();
                 renderAssets();
                 updateFinancialPosition();
                 alert('Asset added successfully!');
             }
 
-            function updateAsset(assetId) {
+            async function updateAsset(assetId) {
                 const asset = assets.find(a => a.id === assetId);
                 if (!asset) return;
 
@@ -4574,7 +4617,7 @@ function reduceLoanAssets(repaymentAmount) {
                 asset.purchaseDate = purchaseDate;
                 asset.description = description;
 
-                saveToFirebase();
+                await saveToFirebase();
                 closeAssetModal();
                 renderAssets();
                 updateFinancialPosition();
@@ -4585,11 +4628,11 @@ function reduceLoanAssets(repaymentAmount) {
                 openAssetModal(assetId);
             }
 
-            function deleteAsset(assetId) {
+            async function deleteAsset(assetId) {
                 if (!confirm('Are you sure you want to delete this asset?')) return;
 
                 assets = assets.filter(a => a.id !== assetId);
-                saveToFirebase();
+                await saveToFirebase();
                 renderAssets();
                 updateFinancialPosition();
                 alert('Asset deleted successfully!');
@@ -4738,7 +4781,7 @@ function reduceLoanAssets(repaymentAmount) {
                 if (modal) modal.classList.add('hidden');
             }
 
-            function addLiability() {
+            async function addLiability() {
                 const name = document.getElementById('liabilityName').value.trim();
                 const type = document.getElementById('liabilityType').value;
                 const amount = parseFloat(document.getElementById('liabilityAmount').value) || 0;
@@ -4765,14 +4808,14 @@ function reduceLoanAssets(repaymentAmount) {
                 };
 
                 liabilities.push(liability);
-                saveToFirebase();
+                await saveToFirebase();
                 renderLiabilities();
                 updateFinancialPosition();
                 closeLiabilityModal();
                 alert('Liability added successfully!');
             }
 
-            function updateLiability(liabilityId) {
+            async function updateLiability(liabilityId) {
                 const liability = liabilities.find(l => l.id === liabilityId);
                 if (!liability) return;
 
@@ -4797,18 +4840,18 @@ function reduceLoanAssets(repaymentAmount) {
                 liability.dueDate = dueDate;
                 liability.description = description;
 
-                saveToFirebase();
+                await saveToFirebase();
                 renderLiabilities();
                 updateFinancialPosition();
                 closeLiabilityModal();
                 alert('Liability updated successfully!');
             }
 
-            function deleteLiability(liabilityId) {
+            async function deleteLiability(liabilityId) {
                 if (!confirm('Are you sure you want to delete this liability?')) return;
 
                 liabilities = liabilities.filter(l => l.id !== liabilityId);
-                saveToFirebase();
+                await saveToFirebase();
                 renderLiabilities();
                 updateFinancialPosition();
                 alert('Liability deleted successfully!');
@@ -5107,6 +5150,74 @@ function reduceLoanAssets(repaymentAmount) {
                         </div>
                     `;
 
+                } else if (type === 'incomeSources') {
+                    // Income by source (account)
+                    const incomeSourcesData = {};
+                    let totalIncome = 0;
+                    
+                    filteredTransactions.filter(t => t.type === 'income').forEach(t => {
+                        const account = accounts.find(a => a.id === t.account);
+                        const accountName = account ? account.name : 'Unknown Account';
+                        incomeSourcesData[accountName] = (incomeSourcesData[accountName] || 0) + t.amount;
+                        totalIncome += t.amount;
+                    });
+
+                    chartConfig = {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(incomeSourcesData),
+                            datasets: [{
+                                data: Object.values(incomeSourcesData),
+                                backgroundColor: [
+                                    '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4',
+                                    '#14B8A6', '#F97316', '#6366F1', '#10B981', '#3B82F6', '#F59E0B'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Income by Source' + dateRangeText
+                                }
+                            }
+                        }
+                    };
+
+                    summaryEl.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-md p-4">
+                            <h3 class="text-lg font-semibold mb-3">Income Sources${dateRangeText}</h3>
+                            <div class="mb-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                <p class="text-sm text-gray-600">Total Income</p>
+                                <p class="text-2xl font-bold text-green-600">${currency}${formatAmount(totalIncome)}</p>
+                            </div>
+                            ${Object.entries(incomeSourcesData)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([source, amount]) => {
+                                    const percentage = totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) : 0;
+                                    return `
+                                        <div class="py-2 border-b border-gray-100 hover:bg-gray-50 rounded p-2 cursor-pointer transition-colors" onclick="showIncomeSourceDetails('${source}', '${dateFrom}', '${dateTo}')">
+                                            <div class="flex justify-between items-center mb-1">
+                                                <span class="text-gray-700 font-medium">${source}</span>
+                                                <span class="font-semibold text-gray-900">${currency}${formatAmount(amount)}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                    <div class="bg-green-600 h-2 rounded-full" style="width: ${percentage}%"></div>
+                                                </div>
+                                                <span class="text-xs text-gray-500">${percentage}%</span>
+                                            </div>
+                                            <p class="text-xs text-green-600 mt-1">👆 Click to see all transactions</p>
+                                        </div>
+                                    `;
+                                }).join('')}
+                        </div>
+                    `;
+
                 } else if (type === 'monthly') {
                     // Monthly trend
                     const monthlyData = {};
@@ -5384,6 +5495,89 @@ function reduceLoanAssets(repaymentAmount) {
 
             function closeCategoryDetails() {
                 document.getElementById('categoryDetailsModal').classList.add('hidden');
+            }
+
+            function showIncomeSourceDetails(accountName, dateFrom, dateTo) {
+                const modal = document.getElementById('incomeSourceDetailsModal');
+                const titleEl = document.getElementById('incomeSourceDetailsTitle');
+                const contentEl = document.getElementById('incomeSourceDetailsContent');
+
+                // Find account ID by name
+                const account = accounts.find(a => a.name === accountName);
+                if (!account) {
+                    contentEl.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">Account not found</p></div>';
+                    return;
+                }
+
+                // Filter transactions for this account within date range
+                let sourceTransactions = transactions.filter(t => {
+                    if (t.type !== 'income' || t.account !== account.id) return false;
+                    
+                    // Apply date range filter
+                    if (dateFrom || dateTo) {
+                        const transactionDate = new Date(t.date);
+                        let matchesDate = true;
+                        
+                        if (dateFrom) {
+                            const fromDate = new Date(dateFrom);
+                            matchesDate = matchesDate && transactionDate >= fromDate;
+                        }
+                        if (dateTo) {
+                            const toDate = new Date(dateTo);
+                            toDate.setHours(23, 59, 59, 999);
+                            matchesDate = matchesDate && transactionDate <= toDate;
+                        }
+                        
+                        return matchesDate;
+                    }
+                    
+                    return true;
+                });
+
+                // Sort by date (newest first)
+                sourceTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Calculate total
+                const totalAmount = sourceTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+                // Update title
+                titleEl.textContent = `${accountName} - ${sourceTransactions.length} transactions (${currency}${formatAmount(totalAmount)})`;
+
+                // Render transactions
+                contentEl.innerHTML = sourceTransactions.length === 0 
+                    ? '<div class="text-center py-8"><p class="text-gray-500">No income transactions found</p></div>'
+                    : sourceTransactions.map((t, index) => {
+                        const dateObj = new Date(t.date);
+                        const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        
+                        return `
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="text-sm font-semibold text-gray-800">${t.description || 'Income'}</span>
+                                            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">${t.category || 'Other'}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-600 space-y-0.5">
+                                            <div>📅 ${dateStr} at ${timeStr}</div>
+                                            ${t.charge && t.charge > 0 ? `<div class="text-orange-600">⚠️ Charge: ${currency}${formatAmount(t.charge)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-bold text-green-600">+${currency}${formatAmount(t.amount)}</div>
+                                        ${t.charge && t.charge > 0 ? `<div class="text-xs text-orange-600">-${currency}${formatAmount(t.charge)}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                modal.classList.remove('hidden');
+            }
+
+            function closeIncomeSourceDetails() {
+                document.getElementById('incomeSourceDetailsModal').classList.add('hidden');
             }
             
             // ============================================
