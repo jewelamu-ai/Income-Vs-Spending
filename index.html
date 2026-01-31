@@ -3573,6 +3573,9 @@ function reduceLoanAssets(repaymentAmount) {
                 // Record transaction for email notification
                 recordTransactionForEmail(transactions[transactions.length - 1]);
                 
+                // Recalculate all balances from scratch to ensure accuracy
+                recalculateAccountBalances();
+                
                 saveToFirebase();
                 closeTransactionModal();
                 document.getElementById('amount').value = '';
