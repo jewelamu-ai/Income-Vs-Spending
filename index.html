@@ -2018,22 +2018,32 @@ A professional budget tracking application with Firebase integration
 
             // Recalculate balances based on transactions
             transactions.forEach(transaction => {
+                const charge = Number(transaction.charge || 0);
+                
                 if (transaction.type === 'transfer') {
                     // Handle transfers
                     const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
                     const toAccount = accounts.find(a => a.id === transaction.toAccount);
                     const amount = Number(transaction.amount || 0);
                     
-                    if (fromAccount) fromAccount.balance -= amount;
+                    if (fromAccount) {
+                        fromAccount.balance -= amount;
+                        // Deduct charge from source account
+                        if (charge > 0) fromAccount.balance -= charge;
+                    }
                     if (toAccount) toAccount.balance += amount;
                 } else if (transaction.type === 'income') {
                     // Handle income
                     const account = accounts.find(a => a.id === transaction.account);
                     const amount = Number(transaction.amount || 0);
                     
-                    if (account) account.balance += amount;
+                    if (account) {
+                        account.balance += amount;
+                        // Deduct charge from account for income transactions
+                        if (charge > 0) account.balance -= charge;
+                    }
                 } else if (transaction.type === 'expense') {
-                    // Handle expense
+                    // Handle expense (amount already includes charge if it was added)
                     const account = accounts.find(a => a.id === transaction.account);
                     const amount = Number(transaction.amount || 0);
                     
@@ -3527,7 +3537,7 @@ function reduceLoanAssets(repaymentAmount) {
                     
                     transactions.push({
                         type: currentType,
-                        amount,
+                        amount: currentType === 'expense' && transactionCharge > 0 ? amount + transactionCharge : amount,
                         category,
                         account,
                         date,
@@ -3551,13 +3561,11 @@ function reduceLoanAssets(repaymentAmount) {
                                 reduceLoanAssets(amount);
                             }
                         } else if (currentType === 'expense') {
-                            selectedAccount.balance = Number(selectedAccount.balance || 0) - amount;
-                            // Deduct charge from account for expense transactions
-                            if (transactionCharge > 0) {
-                                selectedAccount.balance -= transactionCharge;
-                            }
-                            // Update budget spent
-                            updateBudgetSpent(category, amount);
+                            // For expenses, deduct the total (amount + charge)
+                            const totalExpense = amount + transactionCharge;
+                            selectedAccount.balance = Number(selectedAccount.balance || 0) - totalExpense;
+                            // Update budget spent with total expense including charge
+                            updateBudgetSpent(category, totalExpense);
                         }
                     }
                 }
@@ -3720,30 +3728,16 @@ function reduceLoanAssets(repaymentAmount) {
                     const category = document.getElementById('category').value;
                     const account = document.getElementById('accountSelect').value;
                     
-                    transaction.amount = amount;
+                    // For expenses, include charge in the amount
+                    transaction.amount = transaction.type === 'expense' && transactionCharge > 0 ? amount + transactionCharge : amount;
                     transaction.date = date;
                     transaction.description = description;
                     transaction.category = category;
                     transaction.account = account;
                     transaction.charge = transactionCharge;
                     
-                    // Apply new transaction effects
-                    const selectedAccount = accounts.find(a => a.id === account);
-                    if (selectedAccount) {
-                        if (transaction.type === 'income') {
-                            selectedAccount.balance += amount;
-                            if (transactionCharge > 0) {
-                                selectedAccount.balance -= transactionCharge;
-                            }
-                        } else if (transaction.type === 'expense') {
-                            selectedAccount.balance -= amount;
-                            if (transactionCharge > 0) {
-                                selectedAccount.balance -= transactionCharge;
-                            }
-                            // Update budget spent
-                            updateBudgetSpent(category, amount);
-                        }
-                    }
+                    // Recalculate all balances from scratch for accuracy
+                    recalculateAccountBalances();
                 }
 
                 editingTransactionId = null;
