@@ -2118,10 +2118,99 @@ function reduceLoanAssets(repaymentAmount) {
         }
         
         // Calculator functions - Global scope
+        let calcDragOffset = { x: 0, y: 0 };
+        let calcIsDragging = false;
+        
         function openCalculator() {
-            document.getElementById('calculatorModal').classList.remove('hidden');
+            const modal = document.getElementById('calculatorModal');
+            const calcWindow = document.getElementById('calculatorWindow');
+            modal.classList.remove('hidden');
             document.getElementById('calcDisplay').value = '0';
             displayCalculatorHistory();
+            
+            // Center calculator initially
+            calcWindow.style.left = '50%';
+            calcWindow.style.top = '50%';
+            calcWindow.style.transform = 'translate(-50%, -50%)';
+            
+            // Focus on display for keyboard input
+            setTimeout(() => document.getElementById('calcDisplay').focus(), 100);
+            
+            // Setup drag functionality
+            const header = document.getElementById('calculatorHeader');
+            header.onmousedown = startCalcDrag;
+        }
+        
+        function startCalcDrag(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SVG' || e.target.closest('button')) return;
+            
+            calcIsDragging = true;
+            const calcWindow = document.getElementById('calculatorWindow');
+            const rect = calcWindow.getBoundingClientRect();
+            
+            calcDragOffset.x = e.clientX - rect.left;
+            calcDragOffset.y = e.clientY - rect.top;
+            
+            calcWindow.style.transform = 'none';
+            
+            document.addEventListener('mousemove', dragCalculator);
+            document.addEventListener('mouseup', stopCalcDrag);
+            
+            e.preventDefault();
+        }
+        
+        function dragCalculator(e) {
+            if (!calcIsDragging) return;
+            
+            const calcWindow = document.getElementById('calculatorWindow');
+            let newX = e.clientX - calcDragOffset.x;
+            let newY = e.clientY - calcDragOffset.y;
+            
+            // Keep calculator within viewport
+            const maxX = window.innerWidth - calcWindow.offsetWidth;
+            const maxY = window.innerHeight - calcWindow.offsetHeight;
+            
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+            
+            calcWindow.style.left = newX + 'px';
+            calcWindow.style.top = newY + 'px';
+        }
+        
+        function stopCalcDrag() {
+            calcIsDragging = false;
+            document.removeEventListener('mousemove', dragCalculator);
+            document.removeEventListener('mouseup', stopCalcDrag);
+        }
+        
+        function handleCalculatorKeyboard(e) {
+            const key = e.key;
+            
+            // Numbers and operators
+            if (/[0-9+\-*/.()]/.test(key)) {
+                e.preventDefault();
+                calcAppend(key);
+            }
+            // Enter or = to calculate
+            else if (key === 'Enter' || key === '=') {
+                e.preventDefault();
+                calcEquals();
+            }
+            // Backspace to delete last character
+            else if (key === 'Backspace') {
+                e.preventDefault();
+                calcBackspace();
+            }
+            // Escape or Delete to clear
+            else if (key === 'Escape' || key === 'Delete') {
+                e.preventDefault();
+                calcClear();
+            }
+            // C or c to clear
+            else if (key.toLowerCase() === 'c') {
+                e.preventDefault();
+                calcClear();
+            }
         }
         
         function displayCalculatorHistory() {
@@ -5930,10 +6019,10 @@ function reduceLoanAssets(repaymentAmount) {
     </button>
 
     <!-- Calculator Modal -->
-    <div id="calculatorModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div class="flex justify-between items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-t-2xl">
-                <h2 class="text-xl font-bold">Calculator</h2>
+    <div id="calculatorModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if(event.target===this) closeCalculator()">
+        <div id="calculatorWindow" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" style="position: absolute;">
+            <div id="calculatorHeader" class="flex justify-between items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-t-2xl cursor-move">
+                <h2 class="text-xl font-bold">🧮 Calculator - Drag to Move</h2>
                 <button onclick="closeCalculator()" class="text-white hover:text-gray-200">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -5952,7 +6041,7 @@ function reduceLoanAssets(repaymentAmount) {
                     </div>
                 </div>
                 
-                <input type="text" id="calcDisplay" readonly class="w-full bg-gray-100 border-2 border-gray-300 rounded-lg p-4 text-right text-2xl font-mono mb-4 focus:outline-none">
+                <input type="text" id="calcDisplay" class="w-full bg-gray-100 border-2 border-gray-300 rounded-lg p-4 text-right text-2xl font-mono mb-4 focus:outline-none focus:border-indigo-500" onkeydown="handleCalculatorKeyboard(event)">
                 <div class="grid grid-cols-4 gap-2">
                     <button onclick="calcClear()" class="col-span-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">Clear</button>
                     <button onclick="calcAppend('/')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg">÷</button>
