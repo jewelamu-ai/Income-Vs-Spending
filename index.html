@@ -243,6 +243,7 @@ A professional budget tracking application with Firebase integration
                         <span id="userEmail" class="text-sm opacity-90 hidden md:block"></span>
                         <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm" title="Toggle theme">🌙</button>
                         <button onclick="openSettingsModal()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Settings</button>
+                        <button onclick="importData()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Import</button>
                         <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Export</button>
                         <button onclick="logoutUser()" class="bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Logout</button>
                     </div>
@@ -4329,6 +4330,474 @@ function reduceLoanAssets(repaymentAmount) {
 
                 // Show success message
                 showExportSuccess(filename);
+            }
+
+            // ============================================
+            // IMPORT FUNCTIONS
+            // ============================================
+            function importData() {
+                const modal = document.createElement('div');
+                modal.id = 'importModal';
+                modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">Import Data</h2>
+                            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="font-semibold text-blue-900 mb-2">📥 Supported Formats</p>
+                                <ul class="text-sm text-blue-800 space-y-1">
+                                    <li>• <strong>CSV:</strong> Import transactions (income, expense, transfer)</li>
+                                    <li>• <strong>JSON:</strong> Import complete backup (all data)</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <p class="font-semibold text-green-900 mb-2">✅ CSV Format for Transactions</p>
+                                <div class="text-sm text-green-800 space-y-2">
+                                    <p><strong>For Income/Expense:</strong></p>
+                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">type,amount,date,category,account,description,charge</code>
+                                    <p class="text-xs">Example: <code>income,5000,2026-02-01,Salary,default,Monthly salary,0</code></p>
+                                    
+                                    <p class="mt-3"><strong>For Transfers:</strong></p>
+                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">type,amount,date,fromAccount,toAccount,description,charge,interest</code>
+                                    <p class="text-xs">Example: <code>transfer,1000,2026-02-01,default,savings,Transfer to savings,5,10</code></p>
+                                </div>
+                            </div>
+
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <p class="font-semibold text-yellow-900 mb-2">⚠️ Important Notes</p>
+                                <ul class="text-sm text-yellow-800 space-y-1">
+                                    <li>• Use account IDs or exact account names</li>
+                                    <li>• Date format: YYYY-MM-DD or YYYY-MM-DDTHH:mm</li>
+                                    <li>• charge and interest are optional (default to 0)</li>
+                                    <li>• Duplicate transactions will be skipped</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <p class="font-semibold text-purple-900 mb-2">📋 Download Sample Templates</p>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    <button onclick="downloadSampleCSV('all')" class="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700">
+                                        📄 All Types Sample
+                                    </button>
+                                    <button onclick="downloadSampleCSV('income')" class="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700">
+                                        💰 Income Sample
+                                    </button>
+                                    <button onclick="downloadSampleCSV('expense')" class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700">
+                                        💸 Expense Sample
+                                    </button>
+                                    <button onclick="downloadSampleCSV('transfer')" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700">
+                                        🔄 Transfer Sample
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select file:</label>
+                                <input type="file" id="importFileInput" accept=".csv,.json" 
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                                    file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold 
+                                    file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                            </div>
+
+                            <div class="flex space-x-3">
+                                <button onclick="performImport()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
+                                    📥 Import Data
+                                </button>
+                                <button onclick="closeImportModal()" class="flex-1 bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            function closeImportModal() {
+                const modal = document.getElementById('importModal');
+                if (modal) modal.remove();
+            }
+
+            async function performImport() {
+                const fileInput = document.getElementById('importFileInput');
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    alert('Please select a file to import');
+                    return;
+                }
+
+                const fileName = file.name.toLowerCase();
+                const fileExtension = fileName.split('.').pop();
+
+                try {
+                    setSyncStatus('Importing...');
+
+                    if (fileExtension === 'json') {
+                        await importFromJSON(file);
+                    } else if (fileExtension === 'csv') {
+                        await importFromCSV(file);
+                    } else {
+                        alert('❌ Unsupported file format. Please use CSV or JSON files.');
+                        return;
+                    }
+
+                    closeImportModal();
+                } catch (error) {
+                    console.error('Import error:', error);
+                    setSyncStatus('Import failed', true);
+                    alert('❌ Import failed: ' + error.message);
+                }
+            }
+
+            async function importFromJSON(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = async (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            
+                            if (!data || typeof data !== 'object') {
+                                throw new Error('Invalid JSON format');
+                            }
+
+                            const summary = [];
+
+                            // Import transactions
+                            if (Array.isArray(data.transactions)) {
+                                const newTransactions = data.transactions.filter(t => 
+                                    !transactions.find(existing => existing.id === t.id)
+                                );
+                                transactions.push(...newTransactions);
+                                summary.push(`${newTransactions.length} transactions`);
+                            }
+
+                            // Import accounts
+                            if (Array.isArray(data.accounts)) {
+                                const newAccounts = data.accounts.filter(a => 
+                                    a.id !== 'default' && !accounts.find(existing => existing.id === a.id)
+                                );
+                                accounts.push(...newAccounts);
+                                summary.push(`${newAccounts.length} accounts`);
+                            }
+
+                            // Import budgets
+                            if (Array.isArray(data.budgets)) {
+                                const newBudgets = data.budgets.filter(b => 
+                                    !budgets.find(existing => existing.category === b.category)
+                                );
+                                budgets.push(...newBudgets);
+                                summary.push(`${newBudgets.length} budgets`);
+                            }
+
+                            // Import assets
+                            if (Array.isArray(data.assets)) {
+                                const newAssets = data.assets.filter(a => 
+                                    !assets.find(existing => existing.id === a.id)
+                                );
+                                assets.push(...newAssets);
+                                summary.push(`${newAssets.length} assets`);
+                            }
+
+                            // Recalculate balances
+                            recalculateAccountBalances();
+
+                            // Save to Firebase
+                            await saveToFirebase();
+
+                            // Refresh UI
+                            init();
+                            renderTransactions();
+                            renderBudgets();
+                            renderAccounts();
+                            updateTotals();
+
+                            setSyncStatus('Synced');
+                            alert(`✅ Import successful!\n\nImported:\n${summary.join('\n')}`);
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+
+            async function importFromCSV(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = async (e) => {
+                        try {
+                            const csvText = e.target.result;
+                            const lines = csvText.split('\n').filter(line => line.trim());
+                            
+                            if (lines.length < 2) {
+                                throw new Error('CSV file is empty or invalid');
+                            }
+
+                            // Parse header
+                            const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+                            
+                            // Check required fields
+                            if (!headers.includes('type') || !headers.includes('amount') || !headers.includes('date')) {
+                                throw new Error('CSV must contain: type, amount, and date columns');
+                            }
+
+                            const importedTransactions = [];
+                            let successCount = 0;
+                            let errorCount = 0;
+                            const errors = [];
+
+                            for (let i = 1; i < lines.length; i++) {
+                                try {
+                                    const values = parseCSVLine(lines[i]);
+                                    
+                                    if (values.length === 0 || values.every(v => !v)) continue;
+                                    
+                                    // Allow fewer columns than headers (pad with empty values for optional fields)
+                                    // But warn if significantly different
+                                    if (values.length < headers.length) {
+                                        // Pad with empty strings for missing columns
+                                        while (values.length < headers.length) {
+                                            values.push('');
+                                        }
+                                    } else if (values.length > headers.length) {
+                                        errors.push(`Line ${i + 1}: Too many columns (expected ${headers.length}, got ${values.length})`);
+                                        errorCount++;
+                                        continue;
+                                    }
+
+                                    const row = {};
+                                    headers.forEach((header, index) => {
+                                        row[header] = values[index] || '';
+                                    });
+
+                                    const result = createTransactionFromCSV(row, i + 1);
+                                    if (result.success) {
+                                        importedTransactions.push(result.transaction);
+                                        successCount++;
+                                    } else {
+                                        errors.push(`Line ${i + 1}: ${result.error}`);
+                                        errorCount++;
+                                    }
+                                } catch (error) {
+                                    errors.push(`Line ${i + 1}: ${error.message}`);
+                                    errorCount++;
+                                }
+                            }
+
+                            if (importedTransactions.length === 0) {
+                                let errorMessage = 'No valid transactions found.';
+                                if (errors.length > 0) {
+                                    errorMessage += '\n\nErrors:\n' + errors.join('\n');
+                                }
+                                throw new Error(errorMessage);
+                            }
+
+                            // Add transactions
+                            transactions.push(...importedTransactions);
+
+                            // Recalculate balances
+                            recalculateAccountBalances();
+
+                            // Save to Firebase
+                            await saveToFirebase();
+
+                            // Refresh UI
+                            renderTransactions();
+                            renderAccounts();
+                            updateTotals();
+
+                            setSyncStatus('Synced');
+                            
+                            let message = `✅ Import completed!\n\n✓ Successfully imported: ${successCount} transaction(s)`;
+                            if (errorCount > 0) {
+                                message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
+                            }
+                            
+                            alert(message);
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+
+            function parseCSVLine(line) {
+                const values = [];
+                let currentValue = '';
+                let insideQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = line[i + 1];
+
+                    if (char === '"') {
+                        if (insideQuotes && nextChar === '"') {
+                            currentValue += '"';
+                            i++;
+                        } else {
+                            insideQuotes = !insideQuotes;
+                        }
+                    } else if (char === ',' && !insideQuotes) {
+                        values.push(currentValue);
+                        currentValue = '';
+                    } else {
+                        currentValue += char;
+                    }
+                }
+                values.push(currentValue);
+                return values.map(v => v.trim());
+            }
+
+            function createTransactionFromCSV(row, lineNum) {
+                const type = (row.type || '').toLowerCase().trim();
+                const amount = parseFloat(row.amount);
+                const date = row.date;
+
+                // Detailed validation
+                if (!type) {
+                    return { success: false, error: 'Missing transaction type' };
+                }
+                if (!row.amount || row.amount.trim() === '') {
+                    return { success: false, error: 'Missing amount' };
+                }
+                if (isNaN(amount)) {
+                    return { success: false, error: `Invalid amount: '${row.amount}'` };
+                }
+                if (amount <= 0) {
+                    return { success: false, error: 'Amount must be greater than 0' };
+                }
+                if (!date || date.trim() === '') {
+                    return { success: false, error: 'Missing date' };
+                }
+
+                const transaction = {
+                    id: Date.now().toString() + Math.random().toString(36).slice(2) + '_' + lineNum,
+                    type,
+                    amount,
+                    date,
+                    description: row.description || '',
+                    charge: parseFloat(row.charge || 0) || 0
+                };
+
+                if (type === 'transfer') {
+                    // Transfer between accounts
+                    transaction.fromAccount = row.fromaccount || row.fromAccount;
+                    transaction.toAccount = row.toaccount || row.toAccount;
+                    transaction.interest = parseFloat(row.interest || 0) || 0;
+
+                    if (!transaction.fromAccount || !transaction.toAccount) {
+                        return { success: false, error: 'Transfer missing fromAccount or toAccount' };
+                    }
+
+                    // Find accounts by ID or name
+                    const fromAcc = accounts.find(a => 
+                        a.id === transaction.fromAccount || 
+                        a.name.toLowerCase() === transaction.fromAccount.toLowerCase()
+                    );
+                    const toAcc = accounts.find(a => 
+                        a.id === transaction.toAccount || 
+                        a.name.toLowerCase() === transaction.toAccount.toLowerCase()
+                    );
+
+                    if (!fromAcc) {
+                        return { success: false, error: `Source account not found: '${transaction.fromAccount}'` };
+                    }
+                    if (!toAcc) {
+                        return { success: false, error: `Destination account not found: '${transaction.toAccount}'` };
+                    }
+
+                    transaction.fromAccount = fromAcc.id;
+                    transaction.toAccount = toAcc.id;
+                } else if (type === 'income' || type === 'expense') {
+                    // Regular income or expense
+                    transaction.category = row.category || 'Other';
+                    transaction.account = row.account || 'default';
+
+                    // Find account by ID or name
+                    const acc = accounts.find(a => 
+                        a.id === transaction.account || 
+                        a.name.toLowerCase() === transaction.account.toLowerCase()
+                    );
+                    
+                    if (acc) {
+                        transaction.account = acc.id;
+                    } else {
+                        transaction.account = 'default';
+                    }
+                } else {
+                    return { success: false, error: `Unknown transaction type: '${type}' (must be income, expense, or transfer)` };
+                }
+
+                return { success: true, transaction };
+            }
+
+            function downloadSampleCSV(type) {
+                let csvContent = '';
+                let filename = '';
+
+                const today = new Date().toISOString().split('T')[0];
+
+                if (type === 'income') {
+                    csvContent = `type,amount,date,category,account,description,charge
+income,5000,${today},Salary,default,Monthly salary,0
+income,1500,${today},Freelance,default,Project payment,0
+income,200,${today},Gift,default,Birthday gift,0`;
+                    filename = 'sample-income-template.csv';
+                } else if (type === 'expense') {
+                    csvContent = `type,amount,date,category,account,description,charge
+expense,150,${today},Food,default,Groceries at supermarket,5
+expense,50,${today},Transport,default,Taxi fare,0
+expense,200,${today},Bills,default,Electricity bill,10
+expense,75,${today},Entertainment,default,Movie tickets,0`;
+                    filename = 'sample-expense-template.csv';
+                } else if (type === 'transfer') {
+                    csvContent = `type,amount,date,fromAccount,toAccount,description,charge,interest
+transfer,1000,${today},default,savings,Transfer to savings account,5,0
+transfer,500,${today},savings,default,Withdrawal from savings,0,0
+transfer,2000,${today},default,investment,Investment transfer,10,50`;
+                    filename = 'sample-transfer-template.csv';
+                } else if (type === 'all') {
+                    csvContent = `type,amount,date,category,account,fromAccount,toAccount,description,charge,interest
+income,5000,${today},Salary,default,,,Monthly salary,0,
+income,1500,${today},Freelance,default,,,Consulting work,0,
+expense,150,${today},Food,default,,,Groceries,5,
+expense,200,${today},Bills,default,,,Internet bill,10,
+expense,75,${today},Transport,default,,,Fuel,0,
+transfer,1000,${today},,,default,savings,Transfer to savings,5,0
+transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
+                    filename = 'sample-all-transactions-template.csv';
+                }
+
+                // Download the file
+                downloadFile(csvContent, filename, 'text/csv');
+                
+                // Show success notification
+                const notification = document.createElement('div');
+                notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in';
+                notification.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="font-semibold">Sample template downloaded!</span>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
             }
 
             function showExportSuccess(filename) {
