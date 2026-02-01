@@ -779,6 +779,11 @@ A professional budget tracking application with Firebase integration
                             <select id="toAccountSelect" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
                         </div>
                     </div>
+                    <div class="mt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">💰 Investment Interest (optional)</label>
+                        <input type="number" id="transferInterest" step="0.01" min="0" placeholder="0.00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <p class="text-xs text-gray-500 mt-1">Interest will be added to the destination account</p>
+                    </div>
                     <div class="flex justify-end mt-2">
                         <button onclick="setTransferFullAmount()" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Use full balance</button>
                     </div>
@@ -2025,13 +2030,18 @@ A professional budget tracking application with Firebase integration
                     const fromAccount = accounts.find(a => a.id === transaction.fromAccount);
                     const toAccount = accounts.find(a => a.id === transaction.toAccount);
                     const amount = Number(transaction.amount || 0);
+                    const interest = Number(transaction.interest || 0);
                     
                     if (fromAccount) {
                         fromAccount.balance -= amount;
                         // Deduct charge from source account
                         if (charge > 0) fromAccount.balance -= charge;
                     }
-                    if (toAccount) toAccount.balance += amount;
+                    if (toAccount) {
+                        toAccount.balance += amount;
+                        // Add interest to destination account
+                        if (interest > 0) toAccount.balance += interest;
+                    }
                 } else if (transaction.type === 'income') {
                     // Handle income
                     const account = accounts.find(a => a.id === transaction.account);
@@ -2709,12 +2719,16 @@ function reduceLoanAssets(repaymentAmount) {
                                         <div>
                                             <p class="font-medium text-gray-900">${t.description || 'Transfer'}</p>
                                             <p class="text-sm text-gray-500">${fromAccountName} → ${toAccountName} • ${formatDateTime(t.date)}</p>
-                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600 mt-1">Charge: ${currency}${formatAmount(t.charge)}</p>` : ''}\n                                        </div>
+                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600 mt-1">Charge: ${currency}${formatAmount(t.charge)}</p>` : ''}
+                                            ${t.interest && t.interest > 0 ? `<p class="text-xs text-green-600 mt-1">Interest: +${currency}${formatAmount(t.interest)}</p>` : ''}
+                                        </div>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <div class="text-right">
                                             <p class="font-bold text-lg text-blue-600">${currency}${formatAmount(t.amount)}</p>
-                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}\n                                            <p class="text-xs text-gray-500">Transfer</p>
+                                            ${t.charge && t.charge > 0 ? `<p class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)} fee</p>` : ''}
+                                            ${t.interest && t.interest > 0 ? `<p class="text-xs text-green-600">+${currency}${formatAmount(t.interest)} interest</p>` : ''}
+                                            <p class="text-xs text-gray-500">Transfer</p>
                                         </div>
                                         <div class="flex gap-1">
                                             <button onclick="editTransaction('${t.id}')" class="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-600" title="Edit">
@@ -3416,6 +3430,13 @@ function reduceLoanAssets(repaymentAmount) {
             function closeTransactionModal() { 
                 editingTransactionId = null;
                 document.getElementById('transactionModal').classList.add('hidden');
+                // Clear all form fields
+                document.getElementById('amount').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('transactionCharge').value = '';
+                if (document.getElementById('transferInterest')) {
+                    document.getElementById('transferInterest').value = '';
+                }
             }
             function openBudgetModal() { 
                 document.getElementById('budgetModal').classList.remove('hidden');
@@ -3531,6 +3552,7 @@ function reduceLoanAssets(repaymentAmount) {
                 const date = document.getElementById('date').value;
                 const description = document.getElementById('description').value;
                 const transactionCharge = parseFloat(document.getElementById('transactionCharge').value) || 0;
+                const transferInterest = parseFloat(document.getElementById('transferInterest')?.value) || 0;
                 
                 if (isNaN(amount) || amount <= 0 || !date) {
                     alert('Please enter valid amount and date');
@@ -3539,6 +3561,11 @@ function reduceLoanAssets(repaymentAmount) {
                 
                 if (transactionCharge < 0) {
                     alert('Transaction charge cannot be negative');
+                    return;
+                }
+                
+                if (transferInterest < 0) {
+                    alert('Investment interest cannot be negative');
                     return;
                 }
 
@@ -3579,6 +3606,7 @@ function reduceLoanAssets(repaymentAmount) {
                         date,
                         description: transferDesc,
                         charge: transactionCharge,
+                        interest: transferInterest,
                         id: Date.now().toString() + Math.random().toString(36).slice(2)
                     });
                     
@@ -3592,7 +3620,13 @@ function reduceLoanAssets(repaymentAmount) {
                             fromAcc.balance -= transactionCharge;
                         }
                     }
-                    if (toAcc) toAcc.balance += amount;
+                    if (toAcc) {
+                        toAcc.balance += amount;
+                        // Add interest to destination account
+                        if (transferInterest > 0) {
+                            toAcc.balance += transferInterest;
+                        }
+                    }
                     
                 } else {
                     // Handle regular income/expense
@@ -3700,6 +3734,7 @@ function reduceLoanAssets(repaymentAmount) {
                 if (transaction.type === 'transfer') {
                     document.getElementById('fromAccountSelect').value = transaction.fromAccount;
                     document.getElementById('toAccountSelect').value = transaction.toAccount;
+                    document.getElementById('transferInterest').value = transaction.interest || 0;
                 } else if (transaction.type === 'profile-transfer') {
                     document.getElementById('fromProfileSelect').value = transaction.fromProfile;
                     document.getElementById('toProfileSelect').value = transaction.toProfile;
@@ -3738,6 +3773,7 @@ function reduceLoanAssets(repaymentAmount) {
                 const date = document.getElementById('date').value;
                 const description = document.getElementById('description').value;
                 const transactionCharge = parseFloat(document.getElementById('transactionCharge').value) || 0;
+                const transferInterest = parseFloat(document.getElementById('transferInterest')?.value) || 0;
 
                 if (isNaN(amount) || amount <= 0 || !date) {
                     alert('Please enter valid amount and date');
@@ -3746,6 +3782,11 @@ function reduceLoanAssets(repaymentAmount) {
 
                 if (transactionCharge < 0) {
                     alert('Transaction charge cannot be negative');
+                    return;
+                }
+                
+                if (transferInterest < 0) {
+                    alert('Investment interest cannot be negative');
                     return;
                 }
 
@@ -3761,6 +3802,9 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                     if (toAcc) {
                         toAcc.balance -= transaction.amount;
+                        if (transaction.interest > 0) {
+                            toAcc.balance -= transaction.interest;
+                        }
                     }
                 } else if (transaction.type !== 'profile-transfer') {
                     const account = accounts.find(a => a.id === transaction.account);
@@ -3801,6 +3845,7 @@ function reduceLoanAssets(repaymentAmount) {
                     transaction.date = date;
                     transaction.description = description;
                     transaction.charge = transactionCharge;
+                    transaction.interest = transferInterest;
                     transaction.fromAccount = fromAccount;
                     transaction.toAccount = toAccount;
                     
@@ -3815,6 +3860,9 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                     if (toAcc) {
                         toAcc.balance += amount;
+                        if (transferInterest > 0) {
+                            toAcc.balance += transferInterest;
+                        }
                     }
                 } else {
                     const category = document.getElementById('category').value;
