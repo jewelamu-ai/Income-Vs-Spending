@@ -3151,6 +3151,7 @@ function reduceLoanAssets(repaymentAmount) {
                 profiles.push(profile);
                 saveToFirebase();
                 displayProfiles();
+                updateProfileSelector(); // Update the profile dropdown
                 alert('✅ Profile created! Switch to it from the dropdown.');
             }
             
@@ -3239,6 +3240,7 @@ function reduceLoanAssets(repaymentAmount) {
                     profiles = profiles.filter(p => p.id !== profileId);
                     saveToFirebase();
                     displayProfiles();
+                    updateProfileSelector(); // Update the profile dropdown
                     alert('✅ Profile deleted');
                 }
             }
