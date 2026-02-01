@@ -2418,6 +2418,9 @@ function reduceLoanAssets(repaymentAmount) {
 
             // Load custom categories
             const customCategories = loadCustomCategories();
+            
+            // Load hidden default categories
+            const hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
 
             select.innerHTML = '<option value="">Select category</option>';
             budgetSelect.innerHTML = '<option value="">Select category</option>';
@@ -2425,6 +2428,10 @@ function reduceLoanAssets(repaymentAmount) {
             // Add default categories if currentType is not transfer
             if (currentType !== 'transfer' && categories[currentType]) {
                 categories[currentType].forEach(cat => {
+                    // Skip hidden default categories
+                    if (hiddenDefaults[currentType] && hiddenDefaults[currentType].includes(cat)) {
+                        return;
+                    }
                     select.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
             }
@@ -2438,6 +2445,10 @@ function reduceLoanAssets(repaymentAmount) {
 
             // Add expense categories for budget select
             categories.expense.forEach(cat => {
+                // Skip hidden default categories
+                if (hiddenDefaults.expense && hiddenDefaults.expense.includes(cat)) {
+                    return;
+                }
                 budgetSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
             });
 
@@ -4405,20 +4416,104 @@ function reduceLoanAssets(repaymentAmount) {
                 alert(`"${categoryName}" removed from ${type} categories!`);
             }
 
+            // Edit a category (both default and custom)
+            function editCategory(type, oldCategoryName, isDefault) {
+                const newCategoryName = prompt(`Edit ${type} category:`, oldCategoryName);
+                
+                if (!newCategoryName || newCategoryName.trim() === '') {
+                    return;
+                }
+                
+                const trimmedNewName = newCategoryName.trim();
+                
+                // Check if the new name is the same as the old one
+                if (trimmedNewName === oldCategoryName) {
+                    return;
+                }
+                
+                const customCategories = loadCustomCategories();
+                
+                // Check if new name already exists
+                const allCategories = [...categories[type], ...customCategories[type]];
+                if (allCategories.some(cat => cat.toLowerCase() === trimmedNewName.toLowerCase())) {
+                    alert(`A ${type} category named "${trimmedNewName}" already exists!`);
+                    return;
+                }
+                
+                if (isDefault) {
+                    // Editing a default category - move to custom categories
+                    customCategories[type].push(trimmedNewName);
+                    // Remove the old default category from the list by hiding it (we'll filter it out)
+                    const defaultIndex = categories[type].indexOf(oldCategoryName);
+                    if (defaultIndex > -1) {
+                        // We can't modify the default array, so we'll add the new name to custom
+                        // and store which default categories to hide
+                        let hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
+                        if (!hiddenDefaults[type]) hiddenDefaults[type] = [];
+                        if (!hiddenDefaults[type].includes(oldCategoryName)) {
+                            hiddenDefaults[type].push(oldCategoryName);
+                        }
+                        localStorage.setItem('hiddenDefaultCategories', JSON.stringify(hiddenDefaults));
+                    }
+                } else {
+                    // Editing a custom category
+                    const index = customCategories[type].indexOf(oldCategoryName);
+                    if (index > -1) {
+                        customCategories[type][index] = trimmedNewName;
+                    }
+                }
+                
+                saveCustomCategories(customCategories);
+                
+                // Update all transactions that use this category
+                let updatedCount = 0;
+                transactions.forEach(transaction => {
+                    if (transaction.category === oldCategoryName && transaction.type === type) {
+                        transaction.category = trimmedNewName;
+                        updatedCount++;
+                    }
+                });
+                
+                // Update budgets that use this category
+                budgets.forEach(budget => {
+                    if (budget.category === oldCategoryName) {
+                        budget.category = trimmedNewName;
+                    }
+                });
+                
+                // Save changes
+                saveToFirebase();
+                
+                updateCategoriesDisplay();
+                updateCategories(); // Update dropdowns
+                renderTransactions();
+                renderBudgets();
+                
+                alert(`Category renamed from "${oldCategoryName}" to "${trimmedNewName}"!\n${updatedCount} transaction(s) updated.`);
+            }
+
             // Update the categories display in settings modal
             function updateCategoriesDisplay() {
                 const customCategories = loadCustomCategories();
+                const hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
 
                 // Update income categories
                 const incomeList = document.getElementById('incomeCategoriesList');
                 if (incomeList) {
-                    const allIncomeCategories = [...categories.income, ...customCategories.income];
+                    // Filter out hidden default categories
+                    const visibleDefaultIncome = categories.income.filter(cat => 
+                        !hiddenDefaults.income || !hiddenDefaults.income.includes(cat)
+                    );
+                    const allIncomeCategories = [...visibleDefaultIncome, ...customCategories.income];
                     incomeList.innerHTML = allIncomeCategories.map(cat => {
                         const isCustom = customCategories.income.includes(cat);
                         return `
                             <div class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
                                 <span>${cat}</span>
-                                ${isCustom ? `<button onclick="removeCustomCategory('income', '${cat}')" class="text-red-500 hover:text-red-700 ml-2">×</button>` : ''}
+                                <div class="flex gap-1">
+                                    <button onclick="editCategory('income', '${cat}', ${!isCustom})" class="text-blue-500 hover:text-blue-700" title="Edit">✎</button>
+                                    ${isCustom ? `<button onclick="removeCustomCategory('income', '${cat}')" class="text-red-500 hover:text-red-700 ml-1" title="Delete">×</button>` : ''}
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -4427,13 +4522,20 @@ function reduceLoanAssets(repaymentAmount) {
                 // Update expense categories
                 const expenseList = document.getElementById('expenseCategoriesList');
                 if (expenseList) {
-                    const allExpenseCategories = [...categories.expense, ...customCategories.expense];
+                    // Filter out hidden default categories
+                    const visibleDefaultExpense = categories.expense.filter(cat => 
+                        !hiddenDefaults.expense || !hiddenDefaults.expense.includes(cat)
+                    );
+                    const allExpenseCategories = [...visibleDefaultExpense, ...customCategories.expense];
                     expenseList.innerHTML = allExpenseCategories.map(cat => {
                         const isCustom = customCategories.expense.includes(cat);
                         return `
                             <div class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
                                 <span>${cat}</span>
-                                ${isCustom ? `<button onclick="removeCustomCategory('expense', '${cat}')" class="text-red-500 hover:text-red-700 ml-2">×</button>` : ''}
+                                <div class="flex gap-1">
+                                    <button onclick="editCategory('expense', '${cat}', ${!isCustom})" class="text-blue-500 hover:text-blue-700" title="Edit">✎</button>
+                                    ${isCustom ? `<button onclick="removeCustomCategory('expense', '${cat}')" class="text-red-500 hover:text-red-700 ml-1" title="Delete">×</button>` : ''}
+                                </div>
                             </div>
                         `;
                     }).join('');
