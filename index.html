@@ -2184,14 +2184,18 @@ A professional budget tracking application with Firebase integration
                         if (charge > 0) account.balance -= charge;
                     }
                 } else if (transaction.type === 'expense') {
-                    // Handle expense (amount already includes charge if it was added)
+                    // Handle expense (deduct both amount and charge)
                     const account = accounts.find(a => a.id === transaction.account);
                     const amount = Number(transaction.amount || 0);
                     
-                    if (account) account.balance -= amount;
+                    if (account) {
+                        account.balance -= amount;
+                        // Deduct charge from account for expense transactions
+                        if (charge > 0) account.balance -= charge;
+                    }
                     
-                    // Update budget spent
-                    updateBudgetSpent(transaction.category, amount);
+                    // Update budget spent (include charge)
+                    updateBudgetSpent(transaction.category, amount + charge);
                 }
             });
         }
@@ -2801,7 +2805,7 @@ function reduceLoanAssets(repaymentAmount) {
                 
                 const totalExpense = filteredTransactions
                     .filter(t => t.type === 'expense')
-                    .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+                    .reduce((sum, t) => sum + Math.abs(t.amount || 0) + Math.abs(t.charge || 0), 0);
                 
                 const netAmount = totalIncome - totalExpense;
 
@@ -3001,8 +3005,9 @@ function reduceLoanAssets(repaymentAmount) {
                 let income = 0, expense = 0;
                 (transactions || []).forEach(t => {
                     const amt = Number(t.amount || 0);
+                    const charge = Number(t.charge || 0);
                     if (t.type === 'income') income += amt;
-                    else if (t.type === 'expense') expense += amt;
+                    else if (t.type === 'expense') expense += amt + charge;
                     // Transfers are not counted in income/expense totals
                 });
                 const incomeEl = document.getElementById('totalIncome');
@@ -6325,7 +6330,7 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 } else if (type === 'comparison') {
                     // Income vs Expense comparison
                     const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-                    const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                    const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount) + Math.abs(t.charge || 0), 0);
                     
                     chartConfig = {
                         type: 'bar',
