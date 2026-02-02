@@ -477,6 +477,20 @@ A professional budget tracking application with Firebase integration
                     </div>
                 </div>
                 <div id="transactionsSummary" class="mb-4"></div>
+                <div id="bulkActionsBar" class="hidden mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-md p-4 border border-indigo-200">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="selectAllTransactions" onclick="toggleSelectAll()" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm font-semibold text-gray-700">Select All</span>
+                            </label>
+                            <span id="selectedCount" class="text-sm text-gray-600">0 selected</span>
+                        </div>
+                        <button onclick="deleteSelectedTransactions()" id="deleteSelectedBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            🗑️ Delete Selected
+                        </button>
+                    </div>
+                </div>
                 <div id="transactionsList" class="bg-white rounded-xl shadow-md"></div>
             </div>
 
@@ -1454,6 +1468,7 @@ A professional budget tracking application with Firebase integration
         let currency = 'GHS';
         let analyticsChart = null;
         let editingTransactionId = null; // Track if editing a transaction
+        let selectedTransactions = new Set(); // Track selected transactions for bulk delete
         
         // Email notification settings
         let emailNotifications = {
@@ -2711,7 +2726,13 @@ function reduceLoanAssets(repaymentAmount) {
             function renderTransactions() {
                 const el = document.getElementById('transactionsList');
                 if (!el) return;
+                
+                // Update bulk actions bar visibility
+                updateBulkActionsBar();
+                
                 if (!transactions || transactions.length === 0) {
+                    selectedTransactions.clear();
+                    updateBulkActionsBar();
                     el.innerHTML = `
                         <div class="text-center py-8">
                             <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2853,6 +2874,10 @@ function reduceLoanAssets(repaymentAmount) {
                             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
+                                        <input type="checkbox" 
+                                            class="transaction-checkbox w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" 
+                                            ${selectedTransactions.has(t.id) ? 'checked' : ''}
+                                            onchange="toggleTransactionSelection('${t.id}')">
                                         <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                                             <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
@@ -2899,6 +2924,10 @@ function reduceLoanAssets(repaymentAmount) {
                             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
+                                        <input type="checkbox" 
+                                            class="transaction-checkbox w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" 
+                                            ${selectedTransactions.has(t.id) ? 'checked' : ''}
+                                            onchange="toggleTransactionSelection('${t.id}')">
                                         <div class="w-10 h-10 ${bgColor} rounded-full flex items-center justify-center">
                                             <svg class="w-5 h-5 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 ${isIncome ?
@@ -4079,10 +4108,8 @@ function reduceLoanAssets(repaymentAmount) {
                                 });
                             }
                         } else if (transaction.type === 'expense') {
+                            // For expenses, amount already includes charge, so just add it back
                             account.balance += transaction.amount;
-                            if (transaction.charge > 0) {
-                                account.balance += transaction.charge;
-                            }
                             // Reverse budget spent
                             const budget = budgets.find(b => b.category === transaction.category);
                             if (budget) {
@@ -4103,7 +4130,149 @@ function reduceLoanAssets(repaymentAmount) {
                 alert('Transaction deleted successfully!');
             }
 
+            function toggleTransactionSelection(transactionId) {
+                if (selectedTransactions.has(transactionId)) {
+                    selectedTransactions.delete(transactionId);
+                } else {
+                    selectedTransactions.add(transactionId);
+                }
+                updateBulkActionsBar();
+                
+                // Update select all checkbox state
+                const selectAllCheckbox = document.getElementById('selectAllTransactions');
+                if (selectAllCheckbox) {
+                    const allCheckboxes = document.querySelectorAll('.transaction-checkbox');
+                    const checkedCheckboxes = document.querySelectorAll('.transaction-checkbox:checked');
+                    selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
+                    selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
+                }
+            }
+
+            function toggleSelectAll() {
+                const selectAllCheckbox = document.getElementById('selectAllTransactions');
+                const allCheckboxes = document.querySelectorAll('.transaction-checkbox');
+                
+                if (selectAllCheckbox.checked) {
+                    // Select all visible transactions
+                    allCheckboxes.forEach(checkbox => {
+                        const transactionId = checkbox.getAttribute('onchange').match(/'([^']+)'/)[1];
+                        selectedTransactions.add(transactionId);
+                        checkbox.checked = true;
+                    });
+                } else {
+                    // Deselect all
+                    selectedTransactions.clear();
+                    allCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                }
+                
+                updateBulkActionsBar();
+            }
+
+            function updateBulkActionsBar() {
+                const bulkActionsBar = document.getElementById('bulkActionsBar');
+                const selectedCount = document.getElementById('selectedCount');
+                const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+                const selectAllCheckbox = document.getElementById('selectAllTransactions');
+                
+                if (!bulkActionsBar) return;
+                
+                const count = selectedTransactions.size;
+                
+                if (count > 0) {
+                    bulkActionsBar.classList.remove('hidden');
+                    if (selectedCount) selectedCount.textContent = `${count} selected`;
+                    if (deleteSelectedBtn) deleteSelectedBtn.disabled = false;
+                } else {
+                    bulkActionsBar.classList.add('hidden');
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                        selectAllCheckbox.indeterminate = false;
+                    }
+                }
+            }
+
+            function deleteSelectedTransactions() {
+                const count = selectedTransactions.size;
+                
+                if (count === 0) {
+                    alert('No transactions selected');
+                    return;
+                }
+                
+                if (!confirm(`Are you sure you want to delete ${count} transaction${count > 1 ? 's' : ''}?`)) {
+                    return;
+                }
+                
+                // Delete each selected transaction
+                const transactionsToDelete = Array.from(selectedTransactions);
+                transactionsToDelete.forEach(transactionId => {
+                    const transaction = transactions.find(t => t.id === transactionId);
+                    if (!transaction) return;
+
+                    // Reverse transaction effects (same logic as single delete)
+                    if (transaction.type === 'transfer') {
+                        const fromAcc = accounts.find(a => a.id === transaction.fromAccount);
+                        const toAcc = accounts.find(a => a.id === transaction.toAccount);
+                        if (fromAcc) {
+                            fromAcc.balance += transaction.amount;
+                            if (transaction.charge > 0) {
+                                fromAcc.balance += transaction.charge;
+                            }
+                        }
+                        if (toAcc) {
+                            toAcc.balance -= transaction.amount;
+                        }
+                    } else if (transaction.type !== 'profile-transfer') {
+                        const account = accounts.find(a => a.id === transaction.account);
+                        if (account) {
+                            if (transaction.type === 'income') {
+                                account.balance -= transaction.amount;
+                                if (transaction.charge > 0) {
+                                    account.balance += transaction.charge;
+                                }
+                                if (transaction.category === 'Loan Repayment') {
+                                    assets = assets.map(asset => {
+                                        if (asset.category === 'loan') {
+                                            asset.value += transaction.amount;
+                                        }
+                                        return asset;
+                                    });
+                                }
+                            } else if (transaction.type === 'expense') {
+                                // For expenses, amount already includes charge, so just add it back
+                                account.balance += transaction.amount;
+                                const budget = budgets.find(b => b.category === transaction.category);
+                                if (budget) {
+                                    budget.spent -= transaction.amount;
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Remove all selected transactions
+                transactions = transactions.filter(t => !selectedTransactions.has(t.id));
+                
+                // Clear selection
+                selectedTransactions.clear();
+                
+                // Update UI
+                recalculateAccountBalances();
+                saveToFirebase();
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                renderBudgets();
+                
+                alert(`${count} transaction${count > 1 ? 's' : ''} deleted successfully!`);
+            }
+
             function setFilter(filter, event) {
+                // Clear selection when changing filters
+                selectedTransactions.clear();
+                
                 // Add pop animation to clicked button (only if event is provided)
                 if (event && event.target) {
                     const clickedButton = event.target;
@@ -4138,6 +4307,8 @@ function reduceLoanAssets(repaymentAmount) {
             }
 
             function handleSearch() {
+                // Clear selection when searching/filtering
+                selectedTransactions.clear();
                 renderTransactions();
             }
 
