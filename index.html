@@ -112,6 +112,16 @@ A professional budget tracking application with Firebase integration
             100% { transform: scale(1); }
         }
         
+        /* Fade in animation for notifications */
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
         /* Active filter button styles */
         .filter-btn-active {
             transform: scale(1.05);
@@ -892,7 +902,14 @@ A professional budget tracking application with Firebase integration
                     <p class="text-xs text-gray-500 mt-1">Bank fees, transfer charges, etc. (deducted from account)</p>
                 </div>
 
-                <button onclick="saveTransaction()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow mt-6">
+                <div class="flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <input type="checkbox" id="bulkEntryMode" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <label for="bulkEntryMode" class="text-sm font-medium text-indigo-900 cursor-pointer">
+                        📝 Bulk Entry Mode (Add multiple transactions)
+                    </label>
+                </div>
+
+                <button onclick="saveTransaction()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow">
                     Add Transaction
                 </button>
             </div>
@@ -3913,15 +3930,64 @@ function reduceLoanAssets(repaymentAmount) {
                 recalculateAccountBalances();
                 
                 saveToFirebase();
-                closeTransactionModal();
-                document.getElementById('amount').value = '';
-                document.getElementById('description').value = '';
-                document.getElementById('transactionCharge').value = '';
-                renderTransactions();
-                updateTotals();
-                renderAccounts();
-                renderBudgets();
-                alert('Transaction added successfully!');
+                
+                // Check if bulk entry mode is enabled
+                const bulkEntryMode = document.getElementById('bulkEntryMode')?.checked;
+                
+                if (bulkEntryMode) {
+                    // In bulk mode, clear form but keep modal open
+                    document.getElementById('amount').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('transactionCharge').value = '';
+                    if (document.getElementById('transferInterest')) {
+                        document.getElementById('transferInterest').value = '';
+                    }
+                    
+                    // Set date to current time for next transaction
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    document.getElementById('date').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    
+                    // Focus on amount field for quick entry
+                    document.getElementById('amount').focus();
+                    
+                    // Update UI in background
+                    renderTransactions();
+                    updateTotals();
+                    renderAccounts();
+                    renderBudgets();
+                    
+                    // Show brief success notification
+                    showQuickNotification('✅ Transaction added! Add another...');
+                } else {
+                    // Normal mode: close modal and show alert
+                    closeTransactionModal();
+                    document.getElementById('amount').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('transactionCharge').value = '';
+                    renderTransactions();
+                    updateTotals();
+                    renderAccounts();
+                    renderBudgets();
+                    alert('Transaction added successfully!');
+                }
+            }
+            
+            function showQuickNotification(message) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in text-sm font-semibold';
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                // Remove after 2 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 2000);
             }
 
             function editTransaction(transactionId) {
