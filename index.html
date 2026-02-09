@@ -4339,8 +4339,15 @@ function reduceLoanAssets(repaymentAmount) {
                 const modal = document.createElement('div');
                 modal.id = 'exportModal';
                 modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                
+                // Calculate default date range (current month)
+                const today = new Date();
+                const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const defaultStartDate = firstDayOfMonth.toISOString().split('T')[0];
+                const defaultEndDate = today.toISOString().split('T')[0];
+                
                 modal.innerHTML = `
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-xl font-bold">Export Data</h2>
                             <button onclick="closeExportModal()" class="text-gray-400 hover:text-gray-600">✕</button>
@@ -4348,13 +4355,39 @@ function reduceLoanAssets(repaymentAmount) {
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">What to export:</label>
-                                <select id="exportType" onchange="updateExportFormatOptions()" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <select id="exportType" onchange="updateExportFormatOptions(); toggleDateRangeFilter();" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="transactions">Transactions</option>
                                     <option value="accounts">Accounts & Assets</option>
                                     <option value="budgets">Budgets</option>
                                     <option value="reminders">Reminders</option>
                                     <option value="all">All Data (JSON)</option>
                                 </select>
+                            </div>
+                            <div id="dateRangeSection" class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="text-sm font-medium text-blue-900">📅 Date Range Filter</label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="enableDateFilter" onchange="toggleDateInputs()" class="mr-2">
+                                        <span class="text-xs text-blue-800">Enable</span>
+                                    </label>
+                                </div>
+                                <div id="dateInputs" class="space-y-2 hidden">
+                                    <div>
+                                        <label class="block text-xs text-blue-800 mb-1">From:</label>
+                                        <input type="date" id="exportStartDate" value="${defaultStartDate}" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-blue-800 mb-1">To:</label>
+                                        <input type="date" id="exportEndDate" value="${defaultEndDate}" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div class="flex flex-wrap gap-1 mt-2">
+                                        <button onclick="setDateRange('today')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">Today</button>
+                                        <button onclick="setDateRange('week')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">This Week</button>
+                                        <button onclick="setDateRange('month')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">This Month</button>
+                                        <button onclick="setDateRange('year')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">This Year</button>
+                                        <button onclick="setDateRange('all')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">All Time</button>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Export format:</label>
@@ -4375,7 +4408,8 @@ function reduceLoanAssets(repaymentAmount) {
                     </div>
                 `;
                 document.body.appendChild(modal);
-                updateExportFormatOptions(); // Initialize format options
+                updateExportFormatOptions();
+                toggleDateRangeFilter();
             }
 
             function closeExportModal() {
@@ -4383,17 +4417,85 @@ function reduceLoanAssets(repaymentAmount) {
                 if (modal) modal.remove();
             }
 
+            function toggleDateRangeFilter() {
+                const exportType = document.getElementById('exportType').value;
+                const dateRangeSection = document.getElementById('dateRangeSection');
+                
+                // Show date filter only for transactions and reminders
+                if (exportType === 'transactions' || exportType === 'reminders') {
+                    dateRangeSection.style.display = 'block';
+                } else {
+                    dateRangeSection.style.display = 'none';
+                }
+            }
+
+            function toggleDateInputs() {
+                const checkbox = document.getElementById('enableDateFilter');
+                const dateInputs = document.getElementById('dateInputs');
+                dateInputs.style.display = checkbox.checked ? 'block' : 'none';
+            }
+
+            function setDateRange(range) {
+                const today = new Date();
+                let startDate, endDate;
+                
+                switch (range) {
+                    case 'today':
+                        startDate = endDate = today;
+                        break;
+                    case 'week':
+                        startDate = new Date(today);
+                        startDate.setDate(today.getDate() - today.getDay()); // Start of week
+                        endDate = today;
+                        break;
+                    case 'month':
+                        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                        endDate = today;
+                        break;
+                    case 'year':
+                        startDate = new Date(today.getFullYear(), 0, 1);
+                        endDate = today;
+                        break;
+                    case 'all':
+                        // Set to earliest possible date
+                        startDate = new Date(2000, 0, 1);
+                        endDate = today;
+                        break;
+                }
+                
+                document.getElementById('exportStartDate').value = startDate.toISOString().split('T')[0];
+                document.getElementById('exportEndDate').value = endDate.toISOString().split('T')[0];
+            }
+
             function performExport() {
                 const exportType = document.getElementById('exportType').value;
                 const exportFormat = document.getElementById('exportFormat').value;
+                const dateFilterEnabled = document.getElementById('enableDateFilter')?.checked;
+                const startDate = document.getElementById('exportStartDate')?.value;
+                const endDate = document.getElementById('exportEndDate')?.value;
 
                 let data;
                 let filename;
+                let dateRangeSuffix = '';
+
+                // Apply date filter if enabled
+                if (dateFilterEnabled && startDate && endDate) {
+                    dateRangeSuffix = `_${startDate}_to_${endDate}`;
+                }
 
                 switch (exportType) {
                     case 'transactions':
                         data = transactions;
-                        filename = `budget-transactions-${new Date().toISOString().split('T')[0]}`;
+                        
+                        // Apply date filter
+                        if (dateFilterEnabled && startDate && endDate) {
+                            data = data.filter(t => {
+                                const transactionDate = new Date(t.date).toISOString().split('T')[0];
+                                return transactionDate >= startDate && transactionDate <= endDate;
+                            });
+                        }
+                        
+                        filename = `budget-transactions${dateRangeSuffix || '-' + new Date().toISOString().split('T')[0]}`;
                         break;
                     case 'accounts':
                         data = [...accounts, ...assets.map(asset => ({ ...asset, type: 'asset', category: asset.category }))];
@@ -4405,21 +4507,52 @@ function reduceLoanAssets(repaymentAmount) {
                         break;
                     case 'reminders':
                         data = reminders;
-                        filename = `budget-reminders-${new Date().toISOString().split('T')[0]}`;
+                        
+                        // Apply date filter
+                        if (dateFilterEnabled && startDate && endDate) {
+                            data = data.filter(r => {
+                                const reminderDate = new Date(r.dueDate).toISOString().split('T')[0];
+                                return reminderDate >= startDate && reminderDate <= endDate;
+                            });
+                        }
+                        
+                        filename = `budget-reminders${dateRangeSuffix || '-' + new Date().toISOString().split('T')[0]}`;
                         break;
                     case 'all':
+                        // For 'all' export, optionally filter transactions and reminders by date
+                        let filteredTransactions = transactions;
+                        let filteredReminders = reminders;
+                        
+                        if (dateFilterEnabled && startDate && endDate) {
+                            filteredTransactions = transactions.filter(t => {
+                                const transactionDate = new Date(t.date).toISOString().split('T')[0];
+                                return transactionDate >= startDate && transactionDate <= endDate;
+                            });
+                            filteredReminders = reminders.filter(r => {
+                                const reminderDate = new Date(r.dueDate).toISOString().split('T')[0];
+                                return reminderDate >= startDate && reminderDate <= endDate;
+                            });
+                        }
+                        
                         data = {
-                            transactions,
+                            transactions: filteredTransactions,
                             accounts,
                             assets,
                             budgets,
-                            reminders,
+                            reminders: filteredReminders,
                             currency,
                             exportDate: new Date().toISOString(),
+                            dateRange: dateFilterEnabled ? { startDate, endDate } : null,
                             version: '1.0'
                         };
-                        filename = `budget-backup-${new Date().toISOString().split('T')[0]}`;
+                        filename = `budget-backup${dateRangeSuffix || '-' + new Date().toISOString().split('T')[0]}`;
                         break;
+                }
+
+                // Check if filtered data is empty
+                if (Array.isArray(data) && data.length === 0) {
+                    alert('⚠️ No data found for the selected date range.');
+                    return;
                 }
 
                 if (exportFormat === 'csv') {
@@ -4520,31 +4653,36 @@ function reduceLoanAssets(repaymentAmount) {
                             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <p class="font-semibold text-blue-900 mb-2">📥 Supported Formats</p>
                                 <ul class="text-sm text-blue-800 space-y-1">
-                                    <li>• <strong>CSV:</strong> Import transactions (income, expense, transfer)</li>
+                                    <li>• <strong>CSV:</strong> Import transactions, accounts, assets, budgets, or reminders</li>
                                     <li>• <strong>JSON:</strong> Import complete backup (all data)</li>
                                 </ul>
                             </div>
 
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <p class="font-semibold text-green-900 mb-2">✅ CSV Format for Transactions</p>
+                                <p class="font-semibold text-green-900 mb-2">✅ CSV Formats</p>
                                 <div class="text-sm text-green-800 space-y-2">
-                                    <p><strong>For Income/Expense:</strong></p>
+                                    <p><strong>Transactions:</strong></p>
                                     <code class="block bg-white p-2 rounded text-xs overflow-x-auto">type,amount,date,category,account,description,charge</code>
-                                    <p class="text-xs">Example: <code>income,5000,2026-02-01,Salary,default,Monthly salary,0</code></p>
                                     
-                                    <p class="mt-3"><strong>For Transfers:</strong></p>
-                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">type,amount,date,fromAccount,toAccount,description,charge,interest</code>
-                                    <p class="text-xs">Example: <code>transfer,1000,2026-02-01,default,savings,Transfer to savings,5,10</code></p>
+                                    <p class="mt-2"><strong>Accounts/Assets:</strong></p>
+                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">name,balance,type,category,initialBalance,dateAdded</code>
+                                    
+                                    <p class="mt-2"><strong>Budgets:</strong></p>
+                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">category,limit,spent</code>
+                                    
+                                    <p class="mt-2"><strong>Reminders:</strong></p>
+                                    <code class="block bg-white p-2 rounded text-xs overflow-x-auto">title,amount,dueDate,completed</code>
                                 </div>
                             </div>
 
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                 <p class="font-semibold text-yellow-900 mb-2">⚠️ Important Notes</p>
                                 <ul class="text-sm text-yellow-800 space-y-1">
+                                    <li>• CSV type is auto-detected from headers</li>
                                     <li>• Use account IDs or exact account names</li>
                                     <li>• Date format: YYYY-MM-DD or YYYY-MM-DDTHH:mm</li>
-                                    <li>• charge and interest are optional (default to 0)</li>
-                                    <li>• Duplicate transactions will be skipped</li>
+                                    <li>• Duplicates will be skipped automatically</li>
+                                    <li>• You can import exported CSV files directly</li>
                                 </ul>
                             </div>
 
@@ -4717,85 +4855,26 @@ function reduceLoanAssets(repaymentAmount) {
                             // Parse header
                             const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
                             
-                            // Check required fields
-                            if (!headers.includes('type') || !headers.includes('amount') || !headers.includes('date')) {
-                                throw new Error('CSV must contain: type, amount, and date columns');
+                            // Detect CSV type based on headers
+                            if (headers.includes('type') && headers.includes('amount') && headers.includes('date')) {
+                                // Transaction CSV
+                                await importTransactionsFromCSV(lines, headers);
+                                resolve();
+                            } else if (headers.includes('name') && headers.includes('balance')) {
+                                // Accounts/Assets CSV
+                                await importAccountsFromCSV(lines, headers);
+                                resolve();
+                            } else if (headers.includes('category') && headers.includes('limit')) {
+                                // Budgets CSV
+                                await importBudgetsFromCSV(lines, headers);
+                                resolve();
+                            } else if (headers.includes('title') && (headers.includes('duedate') || headers.includes('dueDate'))) {
+                                // Reminders CSV
+                                await importRemindersFromCSV(lines, headers);
+                                resolve();
+                            } else {
+                                throw new Error('Unrecognized CSV format. Please ensure your CSV has the correct headers.');
                             }
-
-                            const importedTransactions = [];
-                            let successCount = 0;
-                            let errorCount = 0;
-                            const errors = [];
-
-                            for (let i = 1; i < lines.length; i++) {
-                                try {
-                                    const values = parseCSVLine(lines[i]);
-                                    
-                                    if (values.length === 0 || values.every(v => !v)) continue;
-                                    
-                                    // Allow fewer columns than headers (pad with empty values for optional fields)
-                                    // But warn if significantly different
-                                    if (values.length < headers.length) {
-                                        // Pad with empty strings for missing columns
-                                        while (values.length < headers.length) {
-                                            values.push('');
-                                        }
-                                    } else if (values.length > headers.length) {
-                                        errors.push(`Line ${i + 1}: Too many columns (expected ${headers.length}, got ${values.length})`);
-                                        errorCount++;
-                                        continue;
-                                    }
-
-                                    const row = {};
-                                    headers.forEach((header, index) => {
-                                        row[header] = values[index] || '';
-                                    });
-
-                                    const result = createTransactionFromCSV(row, i + 1);
-                                    if (result.success) {
-                                        importedTransactions.push(result.transaction);
-                                        successCount++;
-                                    } else {
-                                        errors.push(`Line ${i + 1}: ${result.error}`);
-                                        errorCount++;
-                                    }
-                                } catch (error) {
-                                    errors.push(`Line ${i + 1}: ${error.message}`);
-                                    errorCount++;
-                                }
-                            }
-
-                            if (importedTransactions.length === 0) {
-                                let errorMessage = 'No valid transactions found.';
-                                if (errors.length > 0) {
-                                    errorMessage += '\n\nErrors:\n' + errors.join('\n');
-                                }
-                                throw new Error(errorMessage);
-                            }
-
-                            // Add transactions
-                            transactions.push(...importedTransactions);
-
-                            // Recalculate balances
-                            recalculateAccountBalances();
-
-                            // Save to Firebase
-                            await saveToFirebase();
-
-                            // Refresh UI
-                            renderTransactions();
-                            renderAccounts();
-                            updateTotals();
-
-                            setSyncStatus('Synced');
-                            
-                            let message = `✅ Import completed!\n\n✓ Successfully imported: ${successCount} transaction(s)`;
-                            if (errorCount > 0) {
-                                message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
-                            }
-                            
-                            alert(message);
-                            resolve();
                         } catch (error) {
                             reject(error);
                         }
@@ -4804,6 +4883,388 @@ function reduceLoanAssets(repaymentAmount) {
                     reader.onerror = () => reject(new Error('Failed to read file'));
                     reader.readAsText(file);
                 });
+            }
+
+            async function importTransactionsFromCSV(lines, headers) {
+                const importedTransactions = [];
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = parseCSVLine(lines[i]);
+                        
+                        if (values.length === 0 || values.every(v => !v)) continue;
+                        
+                        // Allow fewer columns than headers (pad with empty values for optional fields)
+                        if (values.length < headers.length) {
+                            // Pad with empty strings for missing columns
+                            while (values.length < headers.length) {
+                                values.push('');
+                            }
+                        } else if (values.length > headers.length) {
+                            errors.push(`Line ${i + 1}: Too many columns (expected ${headers.length}, got ${values.length})`);
+                            errorCount++;
+                            continue;
+                        }
+
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+
+                        const result = createTransactionFromCSV(row, i + 1);
+                        if (result.success) {
+                            importedTransactions.push(result.transaction);
+                            successCount++;
+                        } else {
+                            errors.push(`Line ${i + 1}: ${result.error}`);
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errors.push(`Line ${i + 1}: ${error.message}`);
+                        errorCount++;
+                    }
+                }
+
+                if (importedTransactions.length === 0) {
+                    let errorMessage = 'No valid transactions found.';
+                    if (errors.length > 0) {
+                        errorMessage += '\n\nErrors:\n' + errors.join('\n');
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Add transactions
+                transactions.push(...importedTransactions);
+
+                // Recalculate balances
+                recalculateAccountBalances();
+
+                // Save to Firebase
+                await saveToFirebase();
+
+                // Refresh UI
+                renderTransactions();
+                renderAccounts();
+                updateTotals();
+
+                setSyncStatus('Synced');
+                
+                let message = `✅ Import completed!\n\n✓ Successfully imported: ${successCount} transaction(s)`;
+                if (errorCount > 0) {
+                    message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
+                }
+                
+                alert(message);
+            }
+
+            async function importAccountsFromCSV(lines, headers) {
+                const importedAccounts = [];
+                const importedAssets = [];
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = parseCSVLine(lines[i]);
+                        
+                        if (values.length === 0 || values.every(v => !v)) continue;
+                        
+                        if (values.length < headers.length) {
+                            while (values.length < headers.length) {
+                                values.push('');
+                            }
+                        }
+
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+
+                        const result = createAccountOrAssetFromCSV(row, i + 1);
+                        if (result.success) {
+                            if (result.isAsset) {
+                                importedAssets.push(result.item);
+                            } else {
+                                importedAccounts.push(result.item);
+                            }
+                            successCount++;
+                        } else {
+                            errors.push(`Line ${i + 1}: ${result.error}`);
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errors.push(`Line ${i + 1}: ${error.message}`);
+                        errorCount++;
+                    }
+                }
+
+                if (successCount === 0) {
+                    let errorMessage = 'No valid accounts or assets found.';
+                    if (errors.length > 0) {
+                        errorMessage += '\n\nErrors:\n' + errors.join('\n');
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Add accounts and assets
+                accounts.push(...importedAccounts);
+                assets.push(...importedAssets);
+
+                // Save to Firebase
+                await saveToFirebase();
+
+                // Refresh UI
+                renderAccounts();
+
+                setSyncStatus('Synced');
+                
+                let message = `✅ Import completed!\n\n✓ Successfully imported: ${importedAccounts.length} account(s) and ${importedAssets.length} asset(s)`;
+                if (errorCount > 0) {
+                    message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
+                }
+                
+                alert(message);
+            }
+
+            async function importBudgetsFromCSV(lines, headers) {
+                const importedBudgets = [];
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = parseCSVLine(lines[i]);
+                        
+                        if (values.length === 0 || values.every(v => !v)) continue;
+                        
+                        if (values.length < headers.length) {
+                            while (values.length < headers.length) {
+                                values.push('');
+                            }
+                        }
+
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+
+                        const result = createBudgetFromCSV(row, i + 1);
+                        if (result.success) {
+                            importedBudgets.push(result.budget);
+                            successCount++;
+                        } else {
+                            errors.push(`Line ${i + 1}: ${result.error}`);
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errors.push(`Line ${i + 1}: ${error.message}`);
+                        errorCount++;
+                    }
+                }
+
+                if (importedBudgets.length === 0) {
+                    let errorMessage = 'No valid budgets found.';
+                    if (errors.length > 0) {
+                        errorMessage += '\n\nErrors:\n' + errors.join('\n');
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Add budgets
+                budgets.push(...importedBudgets);
+
+                // Save to Firebase
+                await saveToFirebase();
+
+                // Refresh UI
+                renderBudgets();
+
+                setSyncStatus('Synced');
+                
+                let message = `✅ Import completed!\n\n✓ Successfully imported: ${successCount} budget(s)`;
+                if (errorCount > 0) {
+                    message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
+                }
+                
+                alert(message);
+            }
+
+            async function importRemindersFromCSV(lines, headers) {
+                const importedReminders = [];
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = parseCSVLine(lines[i]);
+                        
+                        if (values.length === 0 || values.every(v => !v)) continue;
+                        
+                        if (values.length < headers.length) {
+                            while (values.length < headers.length) {
+                                values.push('');
+                            }
+                        }
+
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] || '';
+                        });
+
+                        const result = createReminderFromCSV(row, i + 1);
+                        if (result.success) {
+                            importedReminders.push(result.reminder);
+                            successCount++;
+                        } else {
+                            errors.push(`Line ${i + 1}: ${result.error}`);
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errors.push(`Line ${i + 1}: ${error.message}`);
+                        errorCount++;
+                    }
+                }
+
+                if (importedReminders.length === 0) {
+                    let errorMessage = 'No valid reminders found.';
+                    if (errors.length > 0) {
+                        errorMessage += '\n\nErrors:\n' + errors.join('\n');
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Add reminders
+                reminders.push(...importedReminders);
+
+                // Save to Firebase
+                await saveToFirebase();
+
+                // Refresh UI
+                renderReminders();
+
+                setSyncStatus('Synced');
+                
+                let message = `✅ Import completed!\n\n✓ Successfully imported: ${successCount} reminder(s)`;
+                if (errorCount > 0) {
+                    message += `\n⚠️ Skipped: ${errorCount} row(s)${errors.length <= 5 ? '\n\nErrors:\n' + errors.slice(0, 5).join('\n') : ''}`;
+                }
+                
+                alert(message);
+            }
+
+            function createAccountOrAssetFromCSV(row, lineNum) {
+                const name = (row.name || '').trim();
+                const balance = parseFloat(row.balance);
+                const type = (row.type || '').toLowerCase().trim();
+
+                // Validation
+                if (!name) {
+                    return { success: false, error: 'Missing name' };
+                }
+                if (isNaN(balance)) {
+                    return { success: false, error: `Invalid balance: '${row.balance}'` };
+                }
+
+                const isAsset = type === 'asset' || row.category;
+
+                if (isAsset) {
+                    // Check for duplicate asset
+                    const duplicate = assets.find(a => 
+                        a.name.toLowerCase() === name.toLowerCase()
+                    );
+                    if (duplicate) {
+                        return { success: false, error: `Asset '${name}' already exists` };
+                    }
+
+                    const asset = {
+                        id: Date.now().toString() + Math.random().toString(36).slice(2) + '_' + lineNum,
+                        name,
+                        value: balance,
+                        category: row.category || 'Other',
+                        dateAdded: row.dateadded || row.dateAdded || new Date().toISOString().split('T')[0]
+                    };
+
+                    return { success: true, item: asset, isAsset: true };
+                } else {
+                    // Check for duplicate account
+                    const duplicate = accounts.find(a => 
+                        a.name.toLowerCase() === name.toLowerCase()
+                    );
+                    if (duplicate) {
+                        return { success: false, error: `Account '${name}' already exists` };
+                    }
+
+                    const account = {
+                        id: Date.now().toString() + Math.random().toString(36).slice(2) + '_' + lineNum,
+                        name,
+                        balance,
+                        initialBalance: parseFloat(row.initialbalance || row.initialBalance) || balance
+                    };
+
+                    return { success: true, item: account, isAsset: false };
+                }
+            }
+
+            function createBudgetFromCSV(row, lineNum) {
+                const category = (row.category || '').trim();
+                const limit = parseFloat(row.limit);
+
+                // Validation
+                if (!category) {
+                    return { success: false, error: 'Missing category' };
+                }
+                if (isNaN(limit) || limit <= 0) {
+                    return { success: false, error: `Invalid limit: '${row.limit}'` };
+                }
+
+                // Check for duplicate budget
+                const duplicate = budgets.find(b => 
+                    b.category.toLowerCase() === category.toLowerCase()
+                );
+                if (duplicate) {
+                    return { success: false, error: `Budget for category '${category}' already exists` };
+                }
+
+                const budget = {
+                    category,
+                    limit,
+                    spent: parseFloat(row.spent) || 0
+                };
+
+                return { success: true, budget };
+            }
+
+            function createReminderFromCSV(row, lineNum) {
+                const title = (row.title || '').trim();
+                const dueDate = row.duedate || row.dueDate || row.date;
+                const amount = parseFloat(row.amount);
+
+                // Validation
+                if (!title) {
+                    return { success: false, error: 'Missing title' };
+                }
+                if (!dueDate) {
+                    return { success: false, error: 'Missing due date' };
+                }
+                if (isNaN(amount) || amount <= 0) {
+                    return { success: false, error: `Invalid amount: '${row.amount}'` };
+                }
+
+                const reminder = {
+                    id: Date.now().toString() + Math.random().toString(36).slice(2) + '_' + lineNum,
+                    title,
+                    dueDate,
+                    amount,
+                    completed: row.completed === 'true' || row.completed === '1'
+                };
+
+                return { success: true, reminder };
             }
 
             function parseCSVLine(line) {
