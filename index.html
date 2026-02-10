@@ -133,6 +133,26 @@ A professional budget tracking application with Firebase integration
         .filter-btn-active.filter-expense { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
         .filter-btn-active.filter-transfer { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; }
         
+        /* Draggable modal styles */
+        .modal-draggable {
+            position: fixed !important;
+            cursor: move;
+        }
+        
+        .modal-draggable.dragging {
+            cursor: grabbing;
+            user-select: none;
+        }
+        
+        .drag-handle {
+            cursor: move;
+            user-select: none;
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        
         /* Mobile Responsiveness */
         @media (max-width: 768px) {
             /* Hide labels on small screens */
@@ -757,9 +777,14 @@ A professional budget tracking application with Firebase integration
 
     <!-- All Modals (Transaction, Budget, Account, Reminder) - Same as before -->
     <div id="transactionModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Add Transaction</h2>
+        <div id="transactionModalContent" class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
+            <div class="flex justify-between items-center mb-6 drag-handle">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 2a2 2 0 10-4 0 2 2 0 004 0zm0 6a2 2 0 10-4 0 2 2 0 004 0zm0 6a2 2 0 10-4 0 2 2 0 004 0zm10-8a2 2 0 10-4 0 2 2 0 004 0zm0 6a2 2 0 10-4 0 2 2 0 004 0zm0 6a2 2 0 10-4 0 2 2 0 004 0z"/>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-800">Add Transaction</h2>
+                </div>
                 <button onclick="closeTransactionModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -1329,6 +1354,13 @@ A professional budget tracking application with Firebase integration
                 <div class="border-t pt-4">
                     <h3 class="text-lg font-semibold mb-3 text-red-600">⚠️ Data Management</h3>
                     
+                    <!-- Deleted Transactions -->
+                    <div class="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <h4 class="font-semibold text-purple-800 mb-2">🗑️ Deleted Transactions</h4>
+                        <p class="text-xs text-purple-700 mb-2">View and restore up to 50 recently deleted transactions.</p>
+                        <button onclick="openDeletedTransactionsModal()" class="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold hover:bg-purple-700 text-sm">View Deleted Transactions</button>
+                    </div>
+                    
                     <!-- Data Recovery -->
                     <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <h4 class="font-semibold text-blue-800 mb-2">📊 Data Recovery</h4>
@@ -1342,6 +1374,20 @@ A professional budget tracking application with Firebase integration
                 </div>
 
                 <button onclick="saveSettings()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Deleted Transactions Modal -->
+    <div id="deletedTransactionsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-2xl w-full p-4 md:p-6 my-4 md:my-8 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">🗑️ Deleted Transactions</h2>
+                <button onclick="closeDeletedTransactionsModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">The last 50 deleted transactions are kept here. You can restore any of them.</p>
+            <div id="deletedTransactionsList" class="space-y-3">
+                <!-- Deleted transactions will be rendered here -->
             </div>
         </div>
     </div>
@@ -1510,6 +1556,7 @@ A professional budget tracking application with Firebase integration
         let reminders = [];
         let assets = [];
         let liabilities = [];
+        let deletedTransactions = []; // Keep last 50 deleted transactions
         let currentFilter = 'all';
         let currentType = 'expense';
         
@@ -2006,12 +2053,13 @@ A professional budget tracking application with Firebase integration
                         liabilities = data.liabilities || [];
                         currency = data.currency || 'GHS';
                         currentProfileId = data.currentProfileId || null;
+                        deletedTransactions = data.deletedTransactions || [];
                         
                         console.log('Loaded from Firebase (server data is newer), profiles:', profiles.length, 'accounts:', accounts.length, 'transactions:', transactions.length);
                         
                         // Save to localStorage as backup with timestamp
                         localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
                             lastUpdated: serverLastUpdated
                         }));
                     } else {
@@ -2047,7 +2095,7 @@ A professional budget tracking application with Firebase integration
                 // Save to localStorage only
                 console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
                     lastUpdated: currentTimestamp
                 }));
                 return;
@@ -2068,13 +2116,14 @@ A professional budget tracking application with Firebase integration
                     liabilities,
                     currency,
                     currentProfileId,
+                    deletedTransactions,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                     sessionId: window.sessionId
                 });
                 
                 // Also save to localStorage as backup with timestamp
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
                     lastUpdated: currentTimestamp
                 }));
                 console.log('Saved to Firebase successfully');
@@ -2085,7 +2134,7 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
                     lastUpdated: currentTimestamp
                 }));
             }
@@ -2106,6 +2155,7 @@ A professional budget tracking application with Firebase integration
                 liabilities = data.liabilities || [];
                 currency = data.currency || 'GHS';
                 currentProfileId = data.currentProfileId || null;
+                deletedTransactions = data.deletedTransactions || [];
                 // Don't load lastUpdated into the global scope, keep it for comparison only
                 
                 console.log('Loaded from localStorage, profiles:', profiles.length, 'accounts:', accounts.length);
@@ -3714,7 +3764,89 @@ function reduceLoanAssets(repaymentAmount) {
                 const toProfileSelect = document.getElementById('toProfileSelect');
                 if (fromProfileSelect) fromProfileSelect.onchange = updateProfileTransferAccounts;
                 if (toProfileSelect) toProfileSelect.onchange = updateProfileTransferAccounts;
+                
+                // Initialize draggable functionality
+                initializeDraggableModal();
             }
+            
+            // Draggable modal functionality
+            function initializeDraggableModal() {
+                const modalContent = document.getElementById('transactionModalContent');
+                const dragHandle = modalContent.querySelector('.drag-handle');
+                
+                if (!dragHandle || !modalContent) return;
+                
+                let isDragging = false;
+                let currentX;
+                let currentY;
+                let initialX;
+                let initialY;
+                let xOffset = 0;
+                let yOffset = 0;
+                
+                // Reset position to center
+                modalContent.style.left = '';
+                modalContent.style.top = '';
+                modalContent.style.transform = '';
+                modalContent.classList.remove('modal-draggable');
+                
+                dragHandle.addEventListener('mousedown', dragStart);
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', dragEnd);
+                
+                // Touch events for mobile
+                dragHandle.addEventListener('touchstart', dragStart);
+                document.addEventListener('touchmove', drag);
+                document.addEventListener('touchend', dragEnd);
+                
+                function dragStart(e) {
+                    if (e.type === 'touchstart') {
+                        initialX = e.touches[0].clientX - xOffset;
+                        initialY = e.touches[0].clientY - yOffset;
+                    } else {
+                        initialX = e.clientX - xOffset;
+                        initialY = e.clientY - yOffset;
+                    }
+                    
+                    if (e.target === dragHandle || dragHandle.contains(e.target)) {
+                        isDragging = true;
+                        modalContent.classList.add('modal-draggable', 'dragging');
+                    }
+                }
+                
+                function drag(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                        
+                        if (e.type === 'touchmove') {
+                            currentX = e.touches[0].clientX - initialX;
+                            currentY = e.touches[0].clientY - initialY;
+                        } else {
+                            currentX = e.clientX - initialX;
+                            currentY = e.clientY - initialY;
+                        }
+                        
+                        xOffset = currentX;
+                        yOffset = currentY;
+                        
+                        setTranslate(currentX, currentY, modalContent);
+                    }
+                }
+                
+                function dragEnd(e) {
+                    if (isDragging) {
+                        initialX = currentX;
+                        initialY = currentY;
+                        isDragging = false;
+                        modalContent.classList.remove('dragging');
+                    }
+                }
+                
+                function setTranslate(xPos, yPos, el) {
+                    el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+                }
+            }
+            
             function closeTransactionModal() { 
                 editingTransactionId = null;
                 document.getElementById('transactionModal').classList.add('hidden');
@@ -4283,6 +4415,15 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                 }
 
+                // Save to deleted transactions (keep last 50)
+                deletedTransactions.unshift({
+                    ...transaction,
+                    deletedAt: new Date().toISOString()
+                });
+                if (deletedTransactions.length > 50) {
+                    deletedTransactions = deletedTransactions.slice(0, 50);
+                }
+                
                 // Remove transaction
                 transactions = transactions.filter(t => t.id !== transactionId);
                 editingTransactionId = null;
@@ -4416,6 +4557,21 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                 });
 
+                // Save deleted transactions to history (keep last 50)
+                const now = new Date().toISOString();
+                transactionsToDelete.forEach(transactionId => {
+                    const transaction = transactions.find(t => t.id === transactionId);
+                    if (transaction) {
+                        deletedTransactions.unshift({
+                            ...transaction,
+                            deletedAt: now
+                        });
+                    }
+                });
+                if (deletedTransactions.length > 50) {
+                    deletedTransactions = deletedTransactions.slice(0, 50);
+                }
+                
                 // Remove all selected transactions
                 transactions = transactions.filter(t => !selectedTransactions.has(t.id));
                 
@@ -4431,6 +4587,135 @@ function reduceLoanAssets(repaymentAmount) {
                 renderBudgets();
                 
                 alert(`${count} transaction${count > 1 ? 's' : ''} deleted successfully!`);
+            }
+            
+            function restoreTransaction(deletedIndex) {
+                if (deletedIndex < 0 || deletedIndex >= deletedTransactions.length) {
+                    alert('Transaction not found in deleted history');
+                    return;
+                }
+                
+                // Get the deleted transaction
+                const transaction = deletedTransactions[deletedIndex];
+                
+                // Remove deletedAt timestamp
+                const restoredTransaction = {...transaction};
+                delete restoredTransaction.deletedAt;
+                
+                // Re-apply transaction effects
+                if (transaction.type === 'transfer') {
+                    const fromAcc = accounts.find(a => a.id === transaction.fromAccount);
+                    const toAcc = accounts.find(a => a.id === transaction.toAccount);
+                    if (fromAcc) {
+                        fromAcc.balance -= transaction.amount;
+                        if (transaction.charge > 0) {
+                            fromAcc.balance -= transaction.charge;
+                        }
+                    }
+                    if (toAcc) {
+                        toAcc.balance += transaction.amount;
+                    }
+                } else if (transaction.type !== 'profile-transfer') {
+                    const account = accounts.find(a => a.id === transaction.account);
+                    if (account) {
+                        if (transaction.type === 'income') {
+                            account.balance += transaction.amount;
+                            if (transaction.charge > 0) {
+                                account.balance -= transaction.charge;
+                            }
+                            if (transaction.category === 'Loan Repayment') {
+                                assets = assets.map(asset => {
+                                    if (asset.category === 'loan') {
+                                        asset.value -= transaction.amount;
+                                    }
+                                    return asset;
+                                });
+                            }
+                        } else if (transaction.type === 'expense') {
+                            account.balance -= transaction.amount;
+                            const budget = budgets.find(b => b.category === transaction.category);
+                            if (budget) {
+                                budget.spent += transaction.amount;
+                            }
+                        }
+                    }
+                }
+                
+                // Add back to transactions
+                transactions.push(restoredTransaction);
+                
+                // Remove from deleted transactions
+                deletedTransactions.splice(deletedIndex, 1);
+                
+                // Update UI
+                saveToFirebase();
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                renderBudgets();
+                renderDeletedTransactions();
+                
+                alert('Transaction restored successfully!');
+            }
+            
+            function renderDeletedTransactions() {
+                const container = document.getElementById('deletedTransactionsList');
+                if (!container) return;
+                
+                if (deletedTransactions.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No deleted transactions</p>';
+                    return;
+                }
+                
+                container.innerHTML = deletedTransactions.map((t, index) => {
+                    const deletedDate = new Date(t.deletedAt).toLocaleString();
+                    const transactionDate = new Date(t.date).toLocaleDateString();
+                    const account = accounts.find(a => a.id === t.account);
+                    const accountName = account ? account.name : 'Unknown';
+                    
+                    let typeIcon = '💵';
+                    let typeColor = 'text-green-600';
+                    if (t.type === 'expense') {
+                        typeIcon = '💸';
+                        typeColor = 'text-red-600';
+                    } else if (t.type === 'transfer') {
+                        typeIcon = '🔄';
+                        typeColor = 'text-blue-600';
+                    }
+                    
+                    return `
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xl">${typeIcon}</span>
+                                        <span class="font-semibold ${typeColor}">GHS ${Number(t.amount).toFixed(2)}</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full ${t.type === 'income' ? 'bg-green-100 text-green-700' : t.type === 'expense' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">${t.type}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        <div><strong>Category:</strong> ${t.category || 'N/A'}</div>
+                                        <div><strong>Account:</strong> ${accountName}</div>
+                                        <div><strong>Date:</strong> ${transactionDate}</div>
+                                        ${t.note ? `<div><strong>Note:</strong> ${t.note}</div>` : ''}
+                                        <div class="text-xs text-gray-400 mt-1">Deleted: ${deletedDate}</div>
+                                    </div>
+                                </div>
+                                <button onclick="restoreTransaction(${index})" class="ml-3 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors">
+                                    Restore
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            function openDeletedTransactionsModal() {
+                document.getElementById('deletedTransactionsModal').classList.remove('hidden');
+                renderDeletedTransactions();
+            }
+            
+            function closeDeletedTransactionsModal() {
+                document.getElementById('deletedTransactionsModal').classList.add('hidden');
             }
 
             function setFilter(filter, event) {
