@@ -579,6 +579,7 @@ A professional budget tracking application with Firebase integration
                         <select id="analyticsType" class="px-4 py-2 border rounded-lg" onchange="updateAnalytics()">
                             <option value="category">By Category</option>
                             <option value="incomeSources">Income Sources</option>
+                            <option value="tbillInterest">T-Bill Interest</option>
                             <option value="bankCharges">Bank Charges</option>
                             <option value="monthly">Monthly Trend</option>
                             <option value="comparison">Income vs Expense</option>
@@ -1354,6 +1355,30 @@ A professional budget tracking application with Firebase integration
                 <div class="border-t pt-4">
                     <h3 class="text-lg font-semibold mb-3 text-red-600">⚠️ Data Management</h3>
                     
+                    <!-- Investment Interest Calculator -->
+                    <div class="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h4 class="font-semibold text-green-800 mb-2">💰 Calculate Investment Interest</h4>
+                        <p class="text-xs text-green-700 mb-3">Automatically calculate and add interest income for all Investment transactions.</p>
+                        <div class="space-y-2 mb-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Annual Interest Rate (%)</label>
+                                <input type="number" id="investmentInterestRate" placeholder="e.g., 15" step="0.01" min="0" max="100" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Calculate from Date (optional)</label>
+                                <input type="date" id="investmentInterestFromDate" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+                        <button onclick="calculateInvestmentInterest()" class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 text-sm">Calculate & Add Interest</button>
+                    </div>
+                    
+                    <!-- Convert Existing Transfer Interest -->
+                    <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 class="font-semibold text-blue-800 mb-2">🔄 Convert Transfer Interest to Income</h4>
+                        <p class="text-xs text-blue-700 mb-3">For existing transfers with interest, create separate income transactions to track them properly.</p>
+                        <button onclick="convertExistingTransferInterest()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 text-sm">Convert Existing Transfers</button>
+                    </div>
+                    
                     <!-- Deleted Transactions -->
                     <div class="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
                         <h4 class="font-semibold text-purple-800 mb-2">🗑️ Deleted Transactions</h4>
@@ -1586,7 +1611,7 @@ A professional budget tracking application with Firebase integration
         };
 
         const categories = {
-            income: ['Salary', 'Freelance', 'Business', 'Investment', 'Gift', 'Loan Repayment', 'Other'],
+            income: ['Salary', 'Freelance', 'Business', 'Investment', 'T-Bill Interest', 'Gift', 'Loan Repayment', 'Other'],
             expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Education', 'Other']
         };
         
@@ -2318,6 +2343,177 @@ A professional budget tracking application with Firebase integration
                 console.error('Force reload error:', error);
                 setSyncStatus('Reload failed', true);
                 alert('❌ Failed to reload from server. Please try again.\n\nError: ' + error.message);
+            }
+        }
+        
+        function calculateInvestmentInterest() {
+            const rateInput = document.getElementById('investmentInterestRate');
+            const fromDateInput = document.getElementById('investmentInterestFromDate');
+            
+            const annualRate = parseFloat(rateInput.value);
+            const fromDate = fromDateInput.value ? new Date(fromDateInput.value) : null;
+            
+            if (!annualRate || annualRate <= 0) {
+                alert('Please enter a valid annual interest rate (e.g., 15 for 15%)');
+                return;
+            }
+            
+            // Find all investment transactions (transfers to investment accounts)
+            const investmentTransactions = transactions.filter(t => {
+                if (t.type !== 'transfer') return false;
+                
+                const toAccount = accounts.find(a => a.id === t.toAccount);
+                if (!toAccount || toAccount.type !== 'investment') return false;
+                
+                // Filter by date if specified
+                if (fromDate) {
+                    const transactionDate = new Date(t.date);
+                    if (transactionDate < fromDate) return false;
+                }
+                
+                return true;
+            });
+            
+            if (investmentTransactions.length === 0) {
+                alert('No investment transactions found to calculate interest.\n\nMake sure you have transfer transactions to investment accounts.');
+                return;
+            }
+            
+            // Calculate interest for each investment transaction
+            let totalInterestAdded = 0;
+            let interestTransactionsAdded = 0;
+            const today = new Date();
+            
+            investmentTransactions.forEach(investTxn => {
+                const toAccount = accounts.find(a => a.id === investTxn.toAccount);
+                const investmentDate = new Date(investTxn.date);
+                
+                // Calculate days since investment
+                const daysSinceInvestment = Math.floor((today - investmentDate) / (1000 * 60 * 60 * 24));
+                
+                if (daysSinceInvestment <= 0) return; // Skip future or today's transactions
+                
+                // Calculate interest: Principal × Rate × Time
+                // Simple interest formula: I = P × R × T
+                // where R is annual rate, T is time in years
+                const principal = investTxn.amount;
+                const timeInYears = daysSinceInvestment / 365;
+                const interest = principal * (annualRate / 100) * timeInYears;
+                
+                // Check if we already have an interest transaction for this investment
+                const existingInterest = transactions.find(t => 
+                    t.type === 'income' && 
+                    (t.category === 'Investment' || t.category === 'T-Bill Interest') &&
+                    t.account === investTxn.toAccount &&
+                    t.description && t.description.includes(`Interest for ${investTxn.id}`)
+                );
+                
+                if (!existingInterest && interest > 0) {
+                    // Create new interest income transaction
+                    const interestTransaction = {
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                        type: 'income',
+                        amount: parseFloat(interest.toFixed(2)),
+                        account: investTxn.toAccount,
+                        date: today.toISOString().slice(0, 10),
+                        category: 'Investment',
+                        description: `${annualRate}% interest (${daysSinceInvestment} days) for investment on ${investmentDate.toLocaleDateString()} - Interest for ${investTxn.id}`,
+                        charge: 0
+                    };
+                    
+                    transactions.push(interestTransaction);
+                    
+                    // Update account balance
+                    toAccount.balance += interest;
+                    
+                    totalInterestAdded += interest;
+                    interestTransactionsAdded++;
+                }
+            });
+            
+            if (interestTransactionsAdded > 0) {
+                // Save to Firebase
+                saveToFirebase();
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                
+                alert(`✅ Investment Interest Calculated!\n\n` +
+                      `Transactions processed: ${investmentTransactions.length}\n` +
+                      `Interest transactions added: ${interestTransactionsAdded}\n` +
+                      `Total interest: ${currency}${formatAmount(totalInterestAdded)}\n\n` +
+                      `Interest has been added as income to your investment accounts.`);
+                
+                // Clear inputs
+                rateInput.value = '';
+                fromDateInput.value = '';
+                
+                closeSettingsModal();
+            } else {
+                alert('No new interest was calculated.\n\nAll eligible investments may already have interest recorded.');
+            }
+        }
+        
+        function convertExistingTransferInterest() {
+            if (!confirm('This will scan all existing transfer transactions with investment interest and create separate income transactions for them.\n\nDo you want to continue?')) {
+                return;
+            }
+            
+            let conversionsCount = 0;
+            let totalInterestConverted = 0;
+            
+            // Find all transfer transactions with interest > 0
+            transactions.forEach(t => {
+                if (t.type === 'transfer' && t.interest && t.interest > 0) {
+                    // Check if interest income transaction already exists
+                    const existingInterestTxn = transactions.find(txn => 
+                        txn.type === 'income' && 
+                        txn.category === 'Investment' &&
+                        txn.description && 
+                        (txn.description.includes(t.id) || txn.description.includes('Interest from transfer'))
+                    );
+                    
+                    if (!existingInterestTxn) {
+                        // Create income transaction for this interest
+                        const toAccount = accounts.find(a => a.id === t.toAccount);
+                        const accountName = toAccount ? toAccount.name : 'Investment Account';
+                        
+                        transactions.push({
+                            type: 'income',
+                            amount: t.interest,
+                            account: t.toAccount,
+                            date: t.date,
+                            category: 'Investment',
+                            description: `Interest from transfer - ${t.description || 'Transfer to ' + accountName} (${t.id})`,
+                            charge: 0,
+                            id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest_' + conversionsCount
+                        });
+                        
+                        conversionsCount++;
+                        totalInterestConverted += t.interest;
+                    }
+                }
+            });
+            
+            if (conversionsCount > 0) {
+                // Recalculate balances to ensure accuracy
+                recalculateAccountBalances();
+                
+                // Save to Firebase
+                saveToFirebase();
+                renderTransactions();
+                updateTotals();
+                renderAccounts();
+                
+                alert(`✅ Conversion Complete!\n\n` +
+                      `Transfers processed: ${conversionsCount}\n` +
+                      `Income transactions created: ${conversionsCount}\n` +
+                      `Total interest converted: ${currency}${formatAmount(totalInterestConverted)}\n\n` +
+                      `All investment interest is now tracked as separate income transactions!`);
+                
+                closeSettingsModal();
+            } else {
+                alert('No transfers with interest found to convert.\n\nEither:\n- You have no transfers with interest\n- They have already been converted to income transactions');
             }
         }
 
@@ -4045,6 +4241,18 @@ function reduceLoanAssets(repaymentAmount) {
                         // Add interest to destination account
                         if (transferInterest > 0) {
                             toAcc.balance += transferInterest;
+                            
+                            // Create a separate income transaction for the interest
+                            transactions.push({
+                                type: 'income',
+                                amount: transferInterest,
+                                account: toAccount,
+                                date: date,
+                                category: 'Investment',
+                                description: `Interest from transfer - ${transferDesc}`,
+                                charge: 0,
+                                id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest'
+                            });
                         }
                     }
                     
@@ -4331,6 +4539,32 @@ function reduceLoanAssets(repaymentAmount) {
                         toAcc.balance += amount;
                         if (transferInterest > 0) {
                             toAcc.balance += transferInterest;
+                            
+                            // Check if interest income transaction already exists for this transfer
+                            const existingInterestTxn = transactions.find(t => 
+                                t.id.endsWith('_interest') && 
+                                t.description && 
+                                t.description.includes(editingTransactionId)
+                            );
+                            
+                            if (!existingInterestTxn) {
+                                // Create a separate income transaction for the interest
+                                transactions.push({
+                                    type: 'income',
+                                    amount: transferInterest,
+                                    account: toAccount,
+                                    date: date,
+                                    category: 'Investment',
+                                    description: `Interest from transfer - ${description || 'Transfer'} (${editingTransactionId})`,
+                                    charge: 0,
+                                    id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest'
+                                });
+                            } else {
+                                // Update existing interest transaction
+                                existingInterestTxn.amount = transferInterest;
+                                existingInterestTxn.date = date;
+                                existingInterestTxn.account = toAccount;
+                            }
                         }
                     }
                 } else {
@@ -4385,6 +4619,21 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                     if (toAcc) {
                         toAcc.balance -= transaction.amount;
+                        // Also reverse interest if it was added
+                        if (transaction.interest > 0) {
+                            toAcc.balance -= transaction.interest;
+                            
+                            // Find and remove the associated interest income transaction
+                            const interestTxnId = transactions.findIndex(t => 
+                                t.type === 'income' && 
+                                t.category === 'Investment' &&
+                                t.description && 
+                                (t.description.includes(transactionId) || t.id.includes(transactionId))
+                            );
+                            if (interestTxnId !== -1) {
+                                transactions.splice(interestTxnId, 1);
+                            }
+                        }
                     }
                 } else if (transaction.type !== 'profile-transfer') {
                     const account = accounts.find(a => a.id === transaction.account);
@@ -7285,6 +7534,149 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                                         </div>
                                     `;
                                 }).join('')}
+                        </div>
+                    `;
+
+                } else if (type === 'tbillInterest') {
+                    // T-Bill Interest income tracking (includes Investment and T-Bill Interest categories)
+                    const tbillData = {};
+                    let totalTBillIncome = 0;
+                    const tbillTransactions = [];
+                    
+                    // Filter T-Bill Interest and Investment transactions
+                    filteredTransactions.forEach(t => {
+                        if (t.type === 'income' && (t.category === 'T-Bill Interest' || t.category === 'Investment')) {
+                            const account = accounts.find(a => a.id === t.account);
+                            const accountName = account ? account.name : 'Unknown Account';
+                            const monthYear = new Date(t.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                            
+                            if (!tbillData[monthYear]) {
+                                tbillData[monthYear] = 0;
+                            }
+                            tbillData[monthYear] += t.amount;
+                            totalTBillIncome += t.amount;
+                            
+                            tbillTransactions.push({
+                                ...t,
+                                accountName,
+                                monthYear
+                            });
+                        }
+                    });
+
+                    // Sort transactions by date (newest first)
+                    tbillTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    // Sort months chronologically
+                    const sortedMonths = Object.keys(tbillData).sort((a, b) => {
+                        return new Date(a) - new Date(b);
+                    });
+
+                    chartConfig = {
+                        type: 'bar',
+                        data: {
+                            labels: sortedMonths,
+                            datasets: [{
+                                label: 'T-Bill Interest',
+                                data: sortedMonths.map(month => tbillData[month]),
+                                backgroundColor: '#10B981',
+                                borderColor: '#059669',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'T-Bill Interest Income' + dateRangeText
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return currency + value.toFixed(0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    summaryEl.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-md p-4">
+                            <h3 class="text-lg font-semibold mb-3">📊 Investment & T-Bill Interest Income${dateRangeText}</h3>
+                            <div class="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                <p class="text-sm text-gray-600 mb-1">Total Interest Earned</p>
+                                <p class="text-3xl font-bold text-green-600">${currency}${formatAmount(totalTBillIncome)}</p>
+                                <p class="text-xs text-gray-500 mt-2">📈 From ${tbillTransactions.length} transaction${tbillTransactions.length !== 1 ? 's' : ''}</p>
+                            </div>
+                            
+                            ${sortedMonths.length > 0 ? `
+                                <div class="mb-4">
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Monthly Breakdown</h4>
+                                    <div class="space-y-2">
+                                        ${sortedMonths.map(month => {
+                                            const amount = tbillData[month];
+                                            const percentage = totalTBillIncome > 0 ? ((amount / totalTBillIncome) * 100).toFixed(1) : 0;
+                                            return `
+                                                <div class="p-2 bg-gray-50 rounded-lg">
+                                                    <div class="flex justify-between items-center mb-1">
+                                                        <span class="text-gray-700 font-medium">${month}</span>
+                                                        <span class="font-semibold text-green-600">${currency}${formatAmount(amount)}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                            <div class="bg-green-600 h-2 rounded-full" style="width: ${percentage}%"></div>
+                                                        </div>
+                                                        <span class="text-xs text-gray-500">${percentage}%</span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${tbillTransactions.length > 0 ? `
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Recent Transactions</h4>
+                                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                                        ${tbillTransactions.map(t => `
+                                            <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                <div class="flex justify-between items-start mb-1">
+                                                    <div>
+                                                        <p class="font-semibold text-green-700">${currency}${formatAmount(t.amount)}</p>
+                                                        <p class="text-xs text-gray-600">${new Date(t.date).toLocaleDateString('en-US', { 
+                                                            year: 'numeric', 
+                                                            month: 'long', 
+                                                            day: 'numeric' 
+                                                        })}</p>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">${t.accountName}</span>
+                                                        <p class="text-xs text-gray-500 mt-1">${t.category}</p>
+                                                    </div>
+                                                </div>
+                                                ${t.description ? `<p class="text-xs text-gray-600 mt-1">${t.description}</p>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="text-center py-8 text-gray-400">
+                                    <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p class="text-sm">No investment interest transactions found</p>
+                                    <p class="text-xs mt-1">Add income with "Investment" or "T-Bill Interest" category</p>
+                                </div>
+                            `}
                         </div>
                     `;
 
