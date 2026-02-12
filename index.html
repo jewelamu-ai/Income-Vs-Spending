@@ -2485,6 +2485,7 @@ A professional budget tracking application with Firebase integration
                             date: t.date,
                             category: 'Investment',
                             description: `Interest from transfer - ${t.description || 'Transfer to ' + accountName} (${t.id})`,
+                            relatedTransferId: t.id,
                             charge: 0,
                             id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest_' + conversionsCount
                         });
@@ -2528,6 +2529,31 @@ A professional budget tracking application with Firebase integration
                 budget.spent = 0;
             });
 
+            function hasInterestIncomeForTransfer(transferTxn) {
+                const transferInterest = Number(transferTxn.interest || 0);
+                if (transferInterest <= 0) return false;
+
+                const transferId = transferTxn.id;
+                const transferAccount = transferTxn.toAccount;
+                const transferDate = transferTxn.date;
+
+                return transactions.some(t => {
+                    if (t.type !== 'income') return false;
+                    if (t.category !== 'Investment' && t.category !== 'T-Bill Interest') return false;
+
+                    const amount = Number(t.amount || 0);
+                    const amountMatch = Math.abs(amount - transferInterest) < 0.01;
+                    const accountMatch = t.account === transferAccount;
+                    const dateMatch = t.date === transferDate;
+                    const desc = String(t.description || '');
+                    const relatedMatch = t.relatedTransferId && t.relatedTransferId === transferId;
+                    const idMatch = transferId && desc.includes(transferId);
+                    const legacyMatch = desc.includes('Interest from transfer') && amountMatch && accountMatch && dateMatch;
+
+                    return relatedMatch || idMatch || legacyMatch;
+                });
+            }
+
             // Recalculate balances based on transactions
             transactions.forEach(transaction => {
                 const charge = Number(transaction.charge || 0);
@@ -2547,7 +2573,9 @@ A professional budget tracking application with Firebase integration
                     if (toAccount) {
                         toAccount.balance += amount;
                         // Add interest to destination account
-                        if (interest > 0) toAccount.balance += interest;
+                        if (interest > 0 && !hasInterestIncomeForTransfer(transaction)) {
+                            toAccount.balance += interest;
+                        }
                     }
                 } else if (transaction.type === 'income') {
                     // Handle income
@@ -4213,7 +4241,8 @@ function reduceLoanAssets(repaymentAmount) {
 
                     // Create transfer transaction (expense from source, income to destination)
                     const transferDesc = description || `Transfer from ${accounts.find(a => a.id === fromAccount)?.name || 'Account'} to ${accounts.find(a => a.id === toAccount)?.name || 'Account'}`;
-                    
+                    const transferId = Date.now().toString() + Math.random().toString(36).slice(2);
+
                     transactions.push({
                         type: 'transfer',
                         amount,
@@ -4223,7 +4252,7 @@ function reduceLoanAssets(repaymentAmount) {
                         description: transferDesc,
                         charge: transactionCharge,
                         interest: transferInterest,
-                        id: Date.now().toString() + Math.random().toString(36).slice(2)
+                        id: transferId
                     });
                     
                     // Update account balances
@@ -4249,7 +4278,8 @@ function reduceLoanAssets(repaymentAmount) {
                                 account: toAccount,
                                 date: date,
                                 category: 'Investment',
-                                description: `Interest from transfer - ${transferDesc}`,
+                                description: `Interest from transfer - ${transferDesc} (${transferId})`,
+                                relatedTransferId: transferId,
                                 charge: 0,
                                 id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest'
                             });
@@ -4556,6 +4586,7 @@ function reduceLoanAssets(repaymentAmount) {
                                     date: date,
                                     category: 'Investment',
                                     description: `Interest from transfer - ${description || 'Transfer'} (${editingTransactionId})`,
+                                    relatedTransferId: editingTransactionId,
                                     charge: 0,
                                     id: Date.now().toString() + Math.random().toString(36).slice(2) + '_interest'
                                 });
@@ -4564,6 +4595,7 @@ function reduceLoanAssets(repaymentAmount) {
                                 existingInterestTxn.amount = transferInterest;
                                 existingInterestTxn.date = date;
                                 existingInterestTxn.account = toAccount;
+                                existingInterestTxn.relatedTransferId = editingTransactionId;
                             }
                         }
                     }
@@ -4628,7 +4660,7 @@ function reduceLoanAssets(repaymentAmount) {
                                 t.type === 'income' && 
                                 t.category === 'Investment' &&
                                 t.description && 
-                                (t.description.includes(transactionId) || t.id.includes(transactionId))
+                                (t.relatedTransferId === transactionId || t.description.includes(transactionId) || t.id.includes(transactionId))
                             );
                             if (interestTxnId !== -1) {
                                 transactions.splice(interestTxnId, 1);
