@@ -2529,29 +2529,9 @@ A professional budget tracking application with Firebase integration
                 budget.spent = 0;
             });
 
-            function hasInterestIncomeForTransfer(transferTxn) {
-                const transferInterest = Number(transferTxn.interest || 0);
-                if (transferInterest <= 0) return false;
-
-                const transferId = transferTxn.id;
-                const transferAccount = transferTxn.toAccount;
-                const transferDate = transferTxn.date;
-
-                return transactions.some(t => {
-                    if (t.type !== 'income') return false;
-                    if (t.category !== 'Investment' && t.category !== 'T-Bill Interest') return false;
-
-                    const amount = Number(t.amount || 0);
-                    const amountMatch = Math.abs(amount - transferInterest) < 0.01;
-                    const accountMatch = t.account === transferAccount;
-                    const dateMatch = t.date === transferDate;
-                    const desc = String(t.description || '');
-                    const relatedMatch = t.relatedTransferId && t.relatedTransferId === transferId;
-                    const idMatch = transferId && desc.includes(transferId);
-                    const legacyMatch = desc.includes('Interest from transfer') && amountMatch && accountMatch && dateMatch;
-
-                    return relatedMatch || idMatch || legacyMatch;
-                });
+            // Check if this income transaction is linked to any transfer
+            function isTransferInterestIncome(incomeTxn) {
+                return incomeTxn.relatedTransferId ? true : false;
             }
 
             // Recalculate balances based on transactions
@@ -2572,9 +2552,12 @@ A professional budget tracking application with Firebase integration
                     }
                     if (toAccount) {
                         toAccount.balance += amount;
-                        // Add interest to destination account
-                        if (interest > 0 && !hasInterestIncomeForTransfer(transaction)) {
-                            toAccount.balance += interest;
+                        // Add interest to destination account ONLY if no linked income transaction exists
+                        if (interest > 0) {
+                            const hasLinkedIncome = transactions.some(t => t.relatedTransferId === transaction.id);
+                            if (!hasLinkedIncome) {
+                                toAccount.balance += interest;
+                            }
                         }
                     }
                 } else if (transaction.type === 'income') {
@@ -4267,11 +4250,8 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                     if (toAcc) {
                         toAcc.balance += amount;
-                        // Add interest to destination account
+                        // Create a separate income transaction for the interest (only if interest > 0)
                         if (transferInterest > 0) {
-                            toAcc.balance += transferInterest;
-                            
-                            // Create a separate income transaction for the interest
                             transactions.push({
                                 type: 'income',
                                 amount: transferInterest,
@@ -4568,13 +4548,11 @@ function reduceLoanAssets(repaymentAmount) {
                     if (toAcc) {
                         toAcc.balance += amount;
                         if (transferInterest > 0) {
-                            toAcc.balance += transferInterest;
+                            // Don't add interest to balance - let the income transaction handle it
                             
                             // Check if interest income transaction already exists for this transfer
                             const existingInterestTxn = transactions.find(t => 
-                                t.id.endsWith('_interest') && 
-                                t.description && 
-                                t.description.includes(editingTransactionId)
+                                t.relatedTransferId === editingTransactionId
                             );
                             
                             if (!existingInterestTxn) {
@@ -4651,16 +4629,10 @@ function reduceLoanAssets(repaymentAmount) {
                     }
                     if (toAcc) {
                         toAcc.balance -= transaction.amount;
-                        // Also reverse interest if it was added
+                        // Remove the associated interest income transaction if it exists
                         if (transaction.interest > 0) {
-                            toAcc.balance -= transaction.interest;
-                            
-                            // Find and remove the associated interest income transaction
                             const interestTxnId = transactions.findIndex(t => 
-                                t.type === 'income' && 
-                                t.category === 'Investment' &&
-                                t.description && 
-                                (t.relatedTransferId === transactionId || t.description.includes(transactionId) || t.id.includes(transactionId))
+                                t.relatedTransferId === transactionId
                             );
                             if (interestTxnId !== -1) {
                                 transactions.splice(interestTxnId, 1);
