@@ -518,6 +518,12 @@ A professional budget tracking application with Firebase integration
                     </svg>
                     <span>Reminders</span>
                 </button>
+                <button onclick="switchTab('fuel')" id="tabFuel" class="flex-1 py-3 px-2 flex flex-col items-center justify-center text-xs text-gray-600">
+                    <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                    </svg>
+                    <span>Fuel</span>
+                </button>
             </div>
         </div>
 
@@ -765,6 +771,69 @@ A professional budget tracking application with Firebase integration
                     <button onclick="openReminderModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Reminder</button>
                 </div>
                 <div id="remindersList"></div>
+            </div>
+
+            <!-- Fuel Tab -->
+            <div id="contentFuel" class="tab-content hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">⛽ Fuel Tracker</h2>
+                    <p class="text-gray-600">Track your fuel purchases and consumption</p>
+                </div>
+
+                <!-- Fuel Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Total Spent</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                        <p id="fuelTotalSpent" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">All purchases</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Total Quantity</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <p id="fuelTotalQty" class="text-2xl font-bold">0 L</p>
+                        <div class="text-xs opacity-75 mt-1">Liters purchased</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Avg Price/L</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <p id="fuelAvgPrice" class="text-2xl font-bold">GHS0.00</p>
+                        <div class="text-xs opacity-75 mt-1">Per liter</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm opacity-90">Records</div>
+                            <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <p id="fuelRecordCount" class="text-2xl font-bold">0</p>
+                        <div class="text-xs opacity-75 mt-1">Total entries</div>
+                    </div>
+                </div>
+
+                <!-- Add Fuel Button -->
+                <div class="mb-4 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">Your Fuel Records</h3>
+                    <button onclick="openFuelModal()" class="bg-gradient-to-r from-orange-600 to-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition-shadow">
+                        ⛽ Add Fuel Entry
+                    </button>
+                </div>
+
+                <!-- Fuel Records List -->
+                <div id="fuelList" class="bg-white rounded-xl shadow-md"></div>
             </div>
         </div>
     </div>
@@ -1417,6 +1486,72 @@ A professional budget tracking application with Firebase integration
         </div>
     </div>
 
+    <!-- Fuel Modal -->
+    <div id="fuelModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl md:rounded-3xl shadow-2xl max-w-md w-full p-4 md:p-6 my-4 md:my-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Record Fuel Purchase</h2>
+                <button onclick="closeFuelModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form Fields -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                    <input type="datetime-local" id="fuelDate" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Quantity (Liters)</label>
+                        <input type="number" id="fuelQuantity" step="0.01" placeholder="0.00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">GHS</span>
+                            <input type="number" id="fuelAmount" step="0.01" placeholder="0.00" class="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fuel Station</label>
+                    <input type="text" id="fuelStation" placeholder="e.g., Shell, Goil, Engen" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Odometer Reading (km)</label>
+                    <input type="number" id="fuelOdometer" placeholder="Current odometer reading" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fuel Type (Optional)</label>
+                    <select id="fuelType" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <option value="">Select fuel type</option>
+                        <option value="Petrol">⛽ Petrol</option>
+                        <option value="Diesel">🛢️ Diesel</option>
+                        <option value="LPG">🔵 LPG</option>
+                        <option value="Electric">⚡ Electric</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                    <textarea id="fuelNotes" placeholder="Any additional notes" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"></textarea>
+                </div>
+
+                <button onclick="saveFuelEntry()" class="w-full bg-gradient-to-r from-orange-600 to-yellow-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-shadow">
+                    Save Fuel Entry
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================
         // FIREBASE CONFIGURATION
@@ -1581,6 +1716,8 @@ A professional budget tracking application with Firebase integration
         let reminders = [];
         let assets = [];
         let liabilities = [];
+        let fuelEntries = []; // Fuel tracking
+        let editingFuelEntryId = null; // Track if editing a fuel entry
         let deletedTransactions = []; // Keep last 50 deleted transactions
         let currentFilter = 'all';
         let currentType = 'expense';
@@ -2062,7 +2199,7 @@ A professional budget tracking application with Firebase integration
                         
                         // Save to localStorage as backup with timestamp
                         localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, fuelEntries,
                             lastUpdated: serverLastUpdated
                         }));
                     }
@@ -2084,7 +2221,7 @@ A professional budget tracking application with Firebase integration
                         
                         // Save to localStorage as backup with timestamp
                         localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
                             lastUpdated: serverLastUpdated
                         }));
                     } else {
@@ -2142,13 +2279,14 @@ A professional budget tracking application with Firebase integration
                     currency,
                     currentProfileId,
                     deletedTransactions,
+                    fuelEntries,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                     sessionId: window.sessionId
                 });
                 
                 // Also save to localStorage as backup with timestamp
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
                     lastUpdated: currentTimestamp
                 }));
                 console.log('Saved to Firebase successfully');
@@ -2159,7 +2297,7 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
                     lastUpdated: currentTimestamp
                 }));
             }
@@ -2181,6 +2319,7 @@ A professional budget tracking application with Firebase integration
                 currency = data.currency || 'GHS';
                 currentProfileId = data.currentProfileId || null;
                 deletedTransactions = data.deletedTransactions || [];
+                fuelEntries = data.fuelEntries || [];
                 // Don't load lastUpdated into the global scope, keep it for comparison only
                 
                 console.log('Loaded from localStorage, profiles:', profiles.length, 'accounts:', accounts.length);
@@ -2851,6 +2990,8 @@ function reduceLoanAssets(repaymentAmount) {
             renderTransactions();
             renderBudgets();
             renderAccounts();
+            renderFuelList();
+            updateFuelStats();
             updateTotals();
             
             // Initialize filter button active state
@@ -6259,6 +6400,153 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 closeReminderModal();
                 renderReminders();
                 alert('Reminder added successfully!');
+            }
+
+            // Fuel Tracking Functions
+            function openFuelModal() {
+                editingFuelEntryId = null;
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+                
+                document.getElementById('fuelDate').value = dateTimeString;
+                document.getElementById('fuelQuantity').value = '';
+                document.getElementById('fuelAmount').value = '';
+                document.getElementById('fuelStation').value = '';
+                document.getElementById('fuelOdometer').value = '';
+                document.getElementById('fuelType').value = '';
+                document.getElementById('fuelNotes').value = '';
+                
+                document.querySelector('#fuelModal h2').textContent = 'Record Fuel Purchase';
+                document.querySelector('#fuelModal button[onclick="saveFuelEntry()"]').textContent = 'Save Fuel Entry';
+                
+                document.getElementById('fuelModal').classList.remove('hidden');
+            }
+            
+            function editFuelEntry(id) {
+                const entry = fuelEntries.find(f => f.id === id);
+                if (!entry) return;
+                
+                editingFuelEntryId = id;
+                
+                document.getElementById('fuelDate').value = entry.date;
+                document.getElementById('fuelQuantity').value = entry.quantity;
+                document.getElementById('fuelAmount').value = entry.amount;
+                document.getElementById('fuelStation').value = entry.station;
+                document.getElementById('fuelOdometer').value = entry.odometer;
+                document.getElementById('fuelType').value = entry.fuelType;
+                document.getElementById('fuelNotes').value = entry.notes || '';
+                
+                document.querySelector('#fuelModal h2').textContent = 'Edit Fuel Entry';
+                document.querySelector('#fuelModal button[onclick="saveFuelEntry()"]').textContent = 'Update Fuel Entry';
+                
+                document.getElementById('fuelModal').classList.remove('hidden');
+            }
+            
+            function closeFuelModal() {
+                editingFuelEntryId = null;
+                document.getElementById('fuelModal').classList.add('hidden');
+            }
+            
+            function saveFuelEntry() {
+                const date = document.getElementById('fuelDate').value;
+                const quantity = parseFloat(document.getElementById('fuelQuantity').value);
+                const amount = parseFloat(document.getElementById('fuelAmount').value);
+                const station = document.getElementById('fuelStation').value;
+                const odometer = document.getElementById('fuelOdometer').value;
+                const fuelType = document.getElementById('fuelType').value;
+                const notes = document.getElementById('fuelNotes').value;
+                
+                if (!date || !quantity || !amount || !station || !odometer) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                if (quantity <= 0 || amount <= 0) {
+                    alert('Quantity and Amount must be greater than 0');
+                    return;
+                }
+                
+                if (editingFuelEntryId) {
+                    // Update existing entry
+                    const entryIndex = fuelEntries.findIndex(f => f.id === editingFuelEntryId);
+                    if (entryIndex !== -1) {
+                        fuelEntries[entryIndex] = {
+                            id: editingFuelEntryId,
+                            date: date,
+                            quantity: quantity,
+                            amount: amount,
+                            station: station,
+                            odometer: parseFloat(odometer),
+                            fuelType: fuelType || 'Petrol',
+                            notes: notes,
+                            pricePerLiter: (amount / quantity).toFixed(2)
+                        };
+                        alert(`✅ Fuel entry updated!`);
+                    }
+                } else {
+                    // Create new entry
+                    const entry = {
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                        date: date,
+                        quantity: quantity,
+                        amount: amount,
+                        station: station,
+                        odometer: parseFloat(odometer),
+                        fuelType: fuelType || 'Petrol',
+                        notes: notes,
+                        pricePerLiter: (amount / quantity).toFixed(2)
+                    };
+                    fuelEntries.push(entry);
+                    alert(`✅ Fuel entry saved!`);
+                }
+                
+                fuelEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+                saveToFirebase();
+                renderFuelList();
+                updateFuelStats();
+                closeFuelModal();
+            }
+            
+            function deleteFuelEntry(id) {
+                if (!confirm('Delete this fuel entry?')) return;
+                fuelEntries = fuelEntries.filter(f => f.id !== id);
+                saveToFirebase();
+                renderFuelList();
+                updateFuelStats();
+            }
+            
+            function renderFuelList() {
+                const container = document.getElementById('fuelList');
+                if (!fuelEntries || fuelEntries.length === 0) {
+                    container.innerHTML = '<div class="p-8 text-center text-gray-500"><p>No fuel entries yet. Add your first fuel purchase!</p></div>';
+                    return;
+                }
+                container.innerHTML = fuelEntries.map(entry => {
+                    const date = new Date(entry.date);
+                    const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    return `<div class="border-b border-gray-200 p-4 hover:bg-gray-50"><div class="flex justify-between mb-2"><div><h3 class="font-bold text-gray-800">${entry.station}</h3><p class="text-sm text-gray-600">${dateStr}</p></div><div class="text-right"><p class="font-bold text-orange-600">GHS${entry.amount.toFixed(2)}</p><p class="text-sm">GHS${entry.pricePerLiter}/L</p></div></div><div class="grid grid-cols-4 gap-2 text-sm mb-2"><div class="bg-blue-50 p-2 rounded"><p class="text-xs">Qty</p><p class="font-bold">${entry.quantity}L</p></div><div class="bg-green-50 p-2 rounded"><p class="text-xs">Odometer</p><p class="font-bold">${entry.odometer.toLocaleString()}km</p></div><div class="bg-purple-50 p-2 rounded"><p class="text-xs">Type</p><p class="font-bold">${entry.fuelType}</p></div><div class="bg-gray-100 p-2 rounded"><p class="text-xs">Cost/10km</p><p class="font-bold">GHS${(entry.amount / entry.quantity / 10).toFixed(2)}</p></div></div><div class="flex gap-2"><button onclick="editFuelEntry('${entry.id}')" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded">✏️ Edit</button><button onclick="deleteFuelEntry('${entry.id}')" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded">🗑️ Delete</button></div></div>`;
+                }).join('');
+            }
+            
+            function updateFuelStats() {
+                if (!fuelEntries || fuelEntries.length === 0) {
+                    document.getElementById('fuelTotalSpent').textContent = 'GHS0.00';
+                    document.getElementById('fuelTotalQty').textContent = '0 L';
+                    document.getElementById('fuelAvgPrice').textContent = 'GHS0.00';
+                    document.getElementById('fuelRecordCount').textContent = '0';
+                    return;
+                }
+                const totalSpent = fuelEntries.reduce((sum, f) => sum + (f.amount || 0), 0);
+                const totalQty = fuelEntries.reduce((sum, f) => sum + (f.quantity || 0), 0);
+                const avgPrice = totalQty > 0 ? totalSpent / totalQty : 0;
+                document.getElementById('fuelTotalSpent').textContent = 'GHS' + totalSpent.toFixed(2);
+                document.getElementById('fuelTotalQty').textContent = totalQty.toFixed(2) + ' L';
+                document.getElementById('fuelAvgPrice').textContent = 'GHS' + avgPrice.toFixed(2);
+                document.getElementById('fuelRecordCount').textContent = fuelEntries.length;
             }
 
             function openSettingsModal() {
