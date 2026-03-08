@@ -2257,7 +2257,7 @@ A professional budget tracking application with Firebase integration
                 // Save to localStorage only
                 console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
                     lastUpdated: currentTimestamp
                 }));
                 return;
@@ -2445,6 +2445,7 @@ A professional budget tracking application with Firebase integration
                     liabilities = data.liabilities || [];
                     currency = data.currency || 'GHS';
                     currentProfileId = data.currentProfileId || null;
+                    fuelEntries = data.fuelEntries || [];
                     
                     console.log('✅ Force reloaded from server:', {
                         profiles: profiles.length,
@@ -2454,7 +2455,7 @@ A professional budget tracking application with Firebase integration
                     
                     // Save to localStorage
                     localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                        profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId,
+                        profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, fuelEntries,
                         lastUpdated: serverLastUpdated
                     }));
                     
