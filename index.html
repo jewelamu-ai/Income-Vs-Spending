@@ -2166,7 +2166,8 @@ A professional budget tracking application with Firebase integration
                     // Check if server has substantial data
                     const serverHasData = (data.transactions && data.transactions.length > 0) || 
                                         (data.accounts && data.accounts.length > 1) ||
-                                        (data.profiles && data.profiles.length > 0);
+                                        (data.profiles && data.profiles.length > 0) ||
+                                        (data.fuelEntries && data.fuelEntries.length > 0);
                     
                     // Check localStorage for last update time
                     const backup = localStorage.getItem('budgetTracker_backup');
@@ -2178,7 +2179,8 @@ A professional budget tracking application with Firebase integration
                             localLastUpdated = localData.lastUpdated || 0;
                             localHasData = (localData.transactions && localData.transactions.length > 0) || 
                                          (localData.accounts && localData.accounts.length > 1) ||
-                                         (localData.profiles && localData.profiles.length > 0);
+                                         (localData.profiles && localData.profiles.length > 0) ||
+                                         (localData.fuelEntries && localData.fuelEntries.length > 0);
                         } catch (e) {
                             console.error('Error parsing local backup:', e);
                         }
@@ -2447,7 +2449,7 @@ A professional budget tracking application with Firebase integration
                     liabilities = data.liabilities || [];
                     currency = data.currency || 'GHS';
                     currentProfileId = data.currentProfileId || null;
-                    fuelEntries = data.fuelEntries || [];
+fuelEntries = data.fuelEntries ?? fuelEntries;
                     
                     console.log('✅ Force reloaded from server:', {
                         profiles: profiles.length,
