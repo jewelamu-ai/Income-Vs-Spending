@@ -548,6 +548,8 @@ A professional budget tracking application with Firebase integration
                             <label for="dateTo" class="text-xs text-gray-600 mobile-hide-label">To:</label>
                             <input type="date" id="dateTo" class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
                         </div>
+                        <button onclick="setTransactionDateToToday()" class="px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors">Today</button>
+                        <button onclick="clearTransactionDateFilter()" class="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">Clear</button>
                         <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">+ Add</button>
                     </div>
                 </div>
@@ -5154,6 +5156,29 @@ function reduceLoanAssets(repaymentAmount) {
                 // Clear selection when searching/filtering
                 selectedTransactions.clear();
                 renderTransactions();
+            }
+
+            function setTransactionDateToToday() {
+                const today = new Date().toISOString().split('T')[0];
+                const dateFromInput = document.getElementById('dateFrom');
+                const dateToInput = document.getElementById('dateTo');
+
+                if (dateFromInput) dateFromInput.value = today;
+                if (dateToInput) dateToInput.value = today;
+
+                // Re-render using the updated values
+                handleSearch();
+            }
+
+            function clearTransactionDateFilter() {
+                const dateFromInput = document.getElementById('dateFrom');
+                const dateToInput = document.getElementById('dateTo');
+
+                if (dateFromInput) dateFromInput.value = '';
+                if (dateToInput) dateToInput.value = '';
+
+                // Re-render using the updated values
+                handleSearch();
             }
 
             function initializeFilterButtons() {
