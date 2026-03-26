@@ -550,6 +550,8 @@ A professional budget tracking application with Firebase integration
                         </div>
                         <button onclick="setTransactionDateToToday()" class="px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors">Today</button>
                         <button onclick="clearTransactionDateFilter()" class="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">Clear</button>
+                        <button onclick="openBorrowPersonalToBolop()" class="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-semibold hover:bg-yellow-600 transition-colors">Borrow: Personal→Bolop</button>
+                        <button onclick="openRepayBolopToPersonal()" class="px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">Repay: Bolop→Personal</button>
                         <button onclick="openTransactionModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">+ Add</button>
                     </div>
                 </div>
@@ -1386,7 +1388,9 @@ A professional budget tracking application with Firebase integration
 
                 <!-- Category Management -->
                 <div class="border-t pt-4">
-                    <h3 class="text-lg font-semibold mb-3">Category Management</h3>
+                    <h3 class="text-lg font-semibold mb-3">📁 Category Management with Subcategories</h3>
+                    <p class="text-sm text-gray-600 mb-4">Expenses are now organized with main categories and subcategories for better organization. Income remains as a flat list.</p>
+                    <p class="text-xs text-blue-600 mb-4">💡 <strong>Tip:</strong> You can edit default subcategories by clicking the ✎ button next to them. When you edit a default subcategory, it becomes a custom subcategory.</p>
 
                     <!-- Add Income Category -->
                     <div class="mb-3">
@@ -1399,23 +1403,29 @@ A professional budget tracking application with Firebase integration
 
                     <!-- Add Expense Category -->
                     <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Add Expense Category</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Add Expense Main Category</label>
                         <div class="flex gap-2">
-                            <input type="text" id="newExpenseCategory" placeholder="e.g., Insurance, Subscription" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <input type="text" id="newExpenseCategory" placeholder="e.g., Groceries, Subscriptions" class="flex-1 px-3 py-2 border rounded-lg text-sm">
                             <button onclick="addCustomCategory('expense')" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">Add</button>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1">After adding a main category, expand it below to add subcategories</p>
                     </div>
 
                     <!-- Current Categories -->
                     <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Categories</label>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">📋 Current Categories</label>
+                        <div class="grid grid-cols-1 gap-4 text-sm">
                             <div>
-                                <h4 class="font-semibold text-green-600 mb-1">Income</h4>
+                                <h4 class="font-semibold text-green-600 mb-2">💰 Income Categories</h4>
                                 <div id="incomeCategoriesList" class="space-y-1"></div>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-red-600 mb-1">Expense</h4>
+                                <h4 class="font-semibold text-red-600 mb-2">💸 Expense Categories (with Subcategories)</h4>
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Default categories are gray. Custom categories are blue.<br>
+                                    Click <span class="text-green-600">+</span> to add subcategories to custom categories.<br>
+                                    Click <span class="text-blue-400">✎</span> to edit any subcategory (default or custom).
+                                </p>
                                 <div id="expenseCategoriesList" class="space-y-1"></div>
                             </div>
                         </div>
@@ -1751,7 +1761,16 @@ A professional budget tracking application with Firebase integration
 
         const categories = {
             income: ['Salary', 'Freelance', 'Business', 'Investment', 'T-Bill Interest', 'Gift', 'Loan Repayment', 'Other'],
-            expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Education', 'Other']
+            expense: {
+                'Food': ['Groceries', 'Restaurants', 'Fast Food', 'Drinks', 'Snacks'],
+                'Transport': ['Fuel', 'Parking', 'Taxi/Ride', 'Bus/Train', 'Vehicle Maintenance'],
+                'Shopping': ['Clothing', 'Electronics', 'Household Items', 'Personal Care', 'Other'],
+                'Bills': ['Electricity', 'Water', 'Internet', 'Phone', 'Rent'],
+                'Entertainment': ['Movies', 'Gaming', 'Sports', 'Events', 'Hobbies'],
+                'Health': ['Medical', 'Pharmacy', 'Gym', 'Insurance', 'Dental'],
+                'Education': ['Tuition', 'Books', 'Courses', 'Materials', 'Training'],
+                'Other': ['Miscellaneous']
+            }
         };
         
         // Calculator history - stores last 10 calculations
@@ -2201,9 +2220,17 @@ A professional budget tracking application with Firebase integration
                         currency = data.currency || 'GHS';
                         currentProfileId = data.currentProfileId || null;
                         
+                        // Restore custom categories from server
+                        if (data.customCategories) {
+                            localStorage.setItem('budgetTracker_customCategories', JSON.stringify(data.customCategories));
+                        }
+                        if (data.hiddenDefaultCategories) {
+                            localStorage.setItem('hiddenDefaultCategories', JSON.stringify(data.hiddenDefaultCategories));
+                        }
+                        
                         // Save to localStorage as backup with timestamp
                         localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, fuelEntries,
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, fuelEntries, customCategories: data.customCategories || {income: [], expense: []}, hiddenDefaultCategories: data.hiddenDefaultCategories || {},
                             lastUpdated: serverLastUpdated
                         }));
                     }
@@ -2221,11 +2248,19 @@ A professional budget tracking application with Firebase integration
                         currentProfileId = data.currentProfileId || null;
                         deletedTransactions = data.deletedTransactions || [];
                         
+                        // Restore custom categories from server
+                        if (data.customCategories) {
+                            localStorage.setItem('budgetTracker_customCategories', JSON.stringify(data.customCategories));
+                        }
+                        if (data.hiddenDefaultCategories) {
+                            localStorage.setItem('hiddenDefaultCategories', JSON.stringify(data.hiddenDefaultCategories));
+                        }
+                        
                         console.log('Loaded from Firebase (server data is newer), profiles:', profiles.length, 'accounts:', accounts.length, 'transactions:', transactions.length);
                         
                         // Save to localStorage as backup with timestamp
                         localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
+                            profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories: data.customCategories || {income: [], expense: []}, hiddenDefaultCategories: data.hiddenDefaultCategories || {},
                             lastUpdated: serverLastUpdated
                         }));
                     } else {
@@ -2257,11 +2292,15 @@ A professional budget tracking application with Firebase integration
             console.log('saveToFirebase called, profiles:', profiles.length);
             const currentTimestamp = Date.now();
             
+            // Get custom categories to save
+            const customCategories = loadCustomCategories();
+            const hiddenDefaultCategories = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
+            
             if (!currentUser) {
                 // Save to localStorage only
                 console.log('No user, saving to localStorage only');
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories, hiddenDefaultCategories,
                     lastUpdated: currentTimestamp
                 }));
                 return;
@@ -2284,13 +2323,15 @@ A professional budget tracking application with Firebase integration
                     currentProfileId,
                     deletedTransactions,
                     fuelEntries,
+                    customCategories,
+                    hiddenDefaultCategories,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
                     sessionId: window.sessionId
                 });
                 
                 // Also save to localStorage as backup with timestamp
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories, hiddenDefaultCategories,
                     lastUpdated: currentTimestamp
                 }));
                 console.log('Saved to Firebase successfully');
@@ -2301,7 +2342,7 @@ A professional budget tracking application with Firebase integration
                 setSyncStatus('Sync failed - saved locally', true);
                 // Save to localStorage as fallback
                 localStorage.setItem('budgetTracker_backup', JSON.stringify({
-                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries,
+                    profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories, hiddenDefaultCategories,
                     lastUpdated: currentTimestamp
                 }));
             }
@@ -2325,6 +2366,14 @@ A professional budget tracking application with Firebase integration
                 deletedTransactions = data.deletedTransactions || [];
                 fuelEntries = data.fuelEntries || [];
                 // Don't load lastUpdated into the global scope, keep it for comparison only
+                
+                // Restore custom categories from backup
+                if (data.customCategories) {
+                    localStorage.setItem('budgetTracker_customCategories', JSON.stringify(data.customCategories));
+                }
+                if (data.hiddenDefaultCategories) {
+                    localStorage.setItem('hiddenDefaultCategories', JSON.stringify(data.hiddenDefaultCategories));
+                }
                 
                 console.log('Loaded from localStorage, profiles:', profiles.length, 'accounts:', accounts.length);
                 
@@ -3089,37 +3138,65 @@ function reduceLoanAssets(repaymentAmount) {
             select.innerHTML = '<option value="">Select category</option>';
             budgetSelect.innerHTML = '<option value="">Select category</option>';
 
-            // Add default categories if currentType is not transfer
-            if (currentType !== 'transfer' && categories[currentType]) {
-                categories[currentType].forEach(cat => {
-                    // Skip hidden default categories
-                    if (hiddenDefaults[currentType] && hiddenDefaults[currentType].includes(cat)) {
-                        return;
-                    }
+            if (currentType === 'transfer') {
+                const transferCategories = ['Transfer In', 'Transfer Out', 'Movement'];
+                transferCategories.forEach(cat => {
                     select.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
-            }
-
-            // Add custom categories if currentType is not transfer
-            if (currentType !== 'transfer' && customCategories[currentType]) {
-                customCategories[currentType].forEach(cat => {
-                    select.innerHTML += `<option value="${cat}">${cat} ⭐</option>`;
+            } else if (currentType === 'expense') {
+                // Add default expense categories with subcategories
+                Object.keys(categories.expense).forEach(mainCat => {
+                    if (hiddenDefaults.expense && hiddenDefaults.expense.includes(mainCat)) {
+                        return;
+                    }
+                    select.innerHTML += `<option value="${mainCat}" style="font-weight: bold;">${mainCat}</option>`;
+                    categories.expense[mainCat].forEach(subCat => {
+                        // Filter out hidden subcategories
+                        const hiddenSubs = hiddenDefaults.subcategories && hiddenDefaults.subcategories[mainCat];
+                        if (!hiddenSubs || !hiddenSubs.includes(subCat)) {
+                            select.innerHTML += `<option value="${mainCat}|${subCat}">  → ${mainCat}: ${subCat}</option>`;
+                        }
+                    });
                 });
-            }
-
-            // Add expense categories for budget select
-            categories.expense.forEach(cat => {
-                // Skip hidden default categories
-                if (hiddenDefaults.expense && hiddenDefaults.expense.includes(cat)) {
-                    return;
+                
+                // Add custom expense categories with subcategories
+                Object.keys(customCategories.expense).forEach(mainCat => {
+                    select.innerHTML += `<option value="${mainCat}" style="font-weight: bold; color: #2563eb;">${mainCat} ⭐</option>`;
+                    (customCategories.expense[mainCat] || []).forEach(subCat => {
+                        select.innerHTML += `<option value="${mainCat}|${subCat}">  → ${mainCat}: ${subCat}</option>`;
+                    });
+                });
+                
+                // Budget select - only main categories
+                Object.keys(categories.expense).forEach(mainCat => {
+                    if (hiddenDefaults.expense && hiddenDefaults.expense.includes(mainCat)) {
+                        return;
+                    }
+                    budgetSelect.innerHTML += `<option value="${mainCat}">${mainCat}</option>`;
+                });
+                
+                Object.keys(customCategories.expense).forEach(mainCat => {
+                    budgetSelect.innerHTML += `<option value="${mainCat}">${mainCat} ⭐</option>`;
+                });
+            } else {
+                // Income categories (flat list)
+                Object.keys(categories).forEach(type => {
+                    if (type !== 'expense' && Array.isArray(categories[type]) && currentType === type) {
+                        categories[type].forEach(cat => {
+                            if (hiddenDefaults[type] && hiddenDefaults[type].includes(cat)) {
+                                return;
+                            }
+                            select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                        });
+                    }
+                });
+                
+                if (customCategories[currentType]) {
+                    customCategories[currentType].forEach(cat => {
+                        select.innerHTML += `<option value="${cat}">${cat} ⭐</option>`;
+                    });
                 }
-                budgetSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-            });
-
-            // Add custom expense categories for budget select
-            customCategories.expense.forEach(cat => {
-                budgetSelect.innerHTML += `<option value="${cat}">${cat} ⭐</option>`;
-            });
+            }
         }
         function updateAccountSelectors() {
             const selectors = ['accountSelect', 'accountSelector', 'fromAccountSelect', 'toAccountSelect'];
@@ -4530,7 +4607,183 @@ function reduceLoanAssets(repaymentAmount) {
                     alert('Transaction added successfully!');
                 }
             }
-            
+
+            function ensurePersonalAndBolopAccounts() {
+                let personal = accounts.find(a => a.name === 'Personal');
+                let bolop = accounts.find(a => a.name === 'Bolop');
+
+                if (!personal) {
+                    personal = {
+                        id: 'account_personal',
+                        name: 'Personal',
+                        type: 'cash',
+                        balance: 0
+                    };
+                    accounts.push(personal);
+                }
+
+                if (!bolop) {
+                    bolop = {
+                        id: 'account_bolop',
+                        name: 'Bolop',
+                        type: 'cash',
+                        balance: 0
+                    };
+                    accounts.push(bolop);
+                }
+
+                return { personal, bolop };
+            }
+
+            function openBorrowPersonalToBolop() {
+                const { bolop } = ensurePersonalAndBolopAccounts();
+
+                const sourceOptions = accounts
+                    .filter(a => a.id !== bolop.id)
+                    .map((a, i) => `${i + 1}. ${a.name} (${a.type})`).join('\n');
+
+                const sourceIndex = parseInt(prompt(`Select source account (income source) to borrow from:\n${sourceOptions}\n\nEnter number:`));
+                if (isNaN(sourceIndex) || sourceIndex < 1 || sourceIndex > accounts.length) {
+                    alert('Invalid source account selection.');
+                    return;
+                }
+
+                const sourceAccount = accounts[sourceIndex - 1];
+                const amount = parseFloat(prompt(`Enter amount to borrow from ${sourceAccount.name} to Bolop (GHS):`, '0.00'));
+                if (isNaN(amount) || amount <= 0) {
+                    alert('Please enter a valid positive amount.');
+                    return;
+                }
+
+                const date = new Date().toISOString().slice(0, 16);
+                const description = `Loan from ${sourceAccount.name} to Bolop`;
+
+                const transferId = Date.now().toString() + Math.random().toString(36).slice(2);
+                transactions.push({
+                    type: 'transfer',
+                    amount,
+                    fromAccount: sourceAccount.id,
+                    toAccount: bolop.id,
+                    date,
+                    description,
+                    charge: 0,
+                    interest: 0,
+                    id: transferId,
+                    loanTag: `${sourceAccount.name}-to-bolop`
+                });
+
+                console.log('Borrow event', {
+                    sourceAccount: sourceAccount.name,
+                    sourceBalanceBefore: sourceAccount.balance,
+                    bolopBalanceBefore: bolop.balance,
+                    amount,
+                });
+
+                sourceAccount.balance -= amount;
+                bolop.balance += amount;
+
+                console.log('Borrow event complete', {
+                    sourceAccount: sourceAccount.name,
+                    sourceBalanceAfter: sourceAccount.balance,
+                    bolopBalanceAfter: bolop.balance,
+                    loanLiabilityName: `Loan: ${sourceAccount.name} → Bolop`,
+                    transferId,
+                });
+
+                const loanName = `Loan: ${sourceAccount.name} → Bolop`;
+                let loanLiability = liabilities.find(l => l.name === loanName);
+                if (!loanLiability) {
+                    loanLiability = {
+                        id: `liability_${sourceAccount.id}_bolop`,
+                        name: loanName,
+                        type: 'personal-loan',
+                        amount: 0,
+                        interestRate: 0,
+                        startDate: date,
+                        dueDate: '',
+                        description,
+                        createdAt: new Date().toISOString()
+                    };
+                    liabilities.push(loanLiability);
+                }
+
+                loanLiability.amount = Number(loanLiability.amount || 0) + amount;
+
+                saveToFirebase();
+                renderTransactions();
+                renderAccounts();
+                renderLiabilities();
+                updateTotals();
+                updateFinancialPosition();
+
+                alert(`Borrowed GHS${amount.toFixed(2)} from ${sourceAccount.name} to Bolop and liability updated.`);
+            }
+
+            function openRepayBolopToPersonal() {
+                const { bolop } = ensurePersonalAndBolopAccounts();
+
+                const loanLiabilities = liabilities.filter(l => l.name.includes('→ Bolop') && Number(l.amount || 0) > 0);
+                if (loanLiabilities.length === 0) {
+                    alert('No outstanding Bolop loan found. Add a borrow entry first.');
+                    return;
+                }
+
+                const loanList = loanLiabilities.map((l, i) => `${i + 1}. ${l.name} (GHS${Number(l.amount).toFixed(2)})`).join('\n');
+                const loanIndex = parseInt(prompt(`Select liability to pay back to (by number):\n${loanList}`));
+                if (isNaN(loanIndex) || loanIndex < 1 || loanIndex > loanLiabilities.length) {
+                    alert('Invalid liability selection.');
+                    return;
+                }
+
+                const chosenLiability = loanLiabilities[loanIndex - 1];
+                const destinationOptions = accounts.map((a, i) => `${i + 1}. ${a.name} (${a.type})`).join('\n');
+                const destinationIndex = parseInt(prompt(`Select destination account to repay to:\n${destinationOptions}`));
+                if (isNaN(destinationIndex) || destinationIndex < 1 || destinationIndex > accounts.length) {
+                    alert('Invalid destination account selection.');
+                    return;
+                }
+
+                const destinationAccount = accounts[destinationIndex - 1];
+                const maxRepay = Math.min(Number(chosenLiability.amount), Number(bolop.balance));
+                const amount = parseFloat(prompt(`Enter repayment amount (max GHS${maxRepay.toFixed(2)}):`, maxRepay.toFixed(2)));
+
+                if (isNaN(amount) || amount <= 0 || amount > maxRepay + 0.0001) {
+                    alert('Please enter a valid repayment amount not exceeding Bolop balance and outstanding loan.');
+                    return;
+                }
+
+                const date = new Date().toISOString().slice(0, 16);
+                const description = `Repayment from Bolop to ${destinationAccount.name} (${chosenLiability.name})`;
+
+                const transferId = Date.now().toString() + Math.random().toString(36).slice(2);
+                transactions.push({
+                    type: 'transfer',
+                    amount,
+                    fromAccount: bolop.id,
+                    toAccount: destinationAccount.id,
+                    date,
+                    description,
+                    charge: 0,
+                    interest: 0,
+                    id: transferId,
+                    loanTag: `${chosenLiability.name}-repay`
+                });
+
+                bolop.balance -= amount;
+                destinationAccount.balance += amount;
+
+                chosenLiability.amount = Math.max(0, Number(chosenLiability.amount) - amount);
+
+                saveToFirebase();
+                renderTransactions();
+                renderAccounts();
+                renderLiabilities();
+                updateTotals();
+                updateFinancialPosition();
+
+                alert(`Repayment of GHS${amount.toFixed(2)} recorded to ${destinationAccount.name}. Remaining loan: GHS${chosenLiability.amount.toFixed(2)}.`);
+            }
+
             function showQuickNotification(message) {
                 // Create notification element
                 const notification = document.createElement('div');
@@ -6615,12 +6868,67 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
             // Load custom categories from localStorage
             function loadCustomCategories() {
                 const saved = localStorage.getItem('budgetTracker_customCategories');
-                return saved ? JSON.parse(saved) : { income: [], expense: [] };
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    // Ensure expense categories have the new structure
+                    if (data.expense && Array.isArray(data.expense)) {
+                        // Convert old flat array to new structure (for backward compatibility)
+                        const oldExpense = data.expense;
+                        data.expense = {};
+                        oldExpense.forEach(cat => {
+                            data.expense[cat] = [];
+                        });
+                    }
+                    return data;
+                }
+                return { income: [], expense: {} };
             }
 
             // Save custom categories to localStorage
             function saveCustomCategories(customCategories) {
                 localStorage.setItem('budgetTracker_customCategories', JSON.stringify(customCategories));
+            }
+
+            // Get all expense categories as a flat list for dropdowns
+            function getExpenseCategoryOptions() {
+                const customCategories = loadCustomCategories();
+                const options = [];
+                
+                // Add default categories with subcategories
+                Object.keys(categories.expense).forEach(mainCat => {
+                    options.push({ label: mainCat, value: mainCat, isMain: true });
+                    categories.expense[mainCat].forEach(subCat => {
+                        options.push({ label: `  ${mainCat} > ${subCat}`, value: `${mainCat}|${subCat}`, isMain: false });
+                    });
+                });
+                
+                // Add custom categories with subcategories
+                Object.keys(customCategories.expense).forEach(mainCat => {
+                    options.push({ label: mainCat, value: mainCat, isMain: true });
+                    (customCategories.expense[mainCat] || []).forEach(subCat => {
+                        options.push({ label: `  ${mainCat} > ${subCat}`, value: `${mainCat}|${subCat}`, isMain: false });
+                    });
+                });
+                
+                return options;
+            }
+
+            // Get display name for a category (handles both main and sub)
+            function getCategoryDisplayName(categoryValue) {
+                if (!categoryValue) return '';
+                if (categoryValue.includes('|')) {
+                    return categoryValue.split('|')[1]; // Return subcategory name
+                }
+                return categoryValue;
+            }
+
+            // Get main category from a category value
+            function getMainCategory(categoryValue) {
+                if (!categoryValue) return '';
+                if (categoryValue.includes('|')) {
+                    return categoryValue.split('|')[0]; // Return main category
+                }
+                return categoryValue;
             }
 
             // Add a new custom category
@@ -6633,25 +6941,167 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     return;
                 }
 
-                // Check if category already exists
                 const customCategories = loadCustomCategories();
-                const allCategories = [...categories[type], ...customCategories[type]];
-
-                if (allCategories.includes(categoryName)) {
-                    alert('This category already exists');
-                    return;
+                
+                if (type === 'expense') {
+                    // Check if main category already exists
+                    const allMainCategories = Object.keys(categories.expense).concat(Object.keys(customCategories.expense));
+                    if (allMainCategories.includes(categoryName)) {
+                        alert('This category already exists');
+                        return;
+                    }
+                    // Add as new main category with empty subcategories
+                    customCategories.expense[categoryName] = [];
+                } else {
+                    // For income, check if it already exists
+                    const allCategories = categories[type].concat(customCategories[type] || []);
+                    if (allCategories.includes(categoryName)) {
+                        alert('This category already exists');
+                        return;
+                    }
+                    customCategories[type].push(categoryName);
                 }
 
-                // Add the new category
-                customCategories[type].push(categoryName);
                 saveCustomCategories(customCategories);
 
                 // Clear input and refresh display
                 document.getElementById(inputId).value = '';
                 updateCategoriesDisplay();
                 updateCategories(); // Update dropdowns
+                
+                // Sync to Firebase
+                saveToFirebase();
 
                 alert(`"${categoryName}" added to ${type} categories!`);
+            }
+            
+            // Add a subcategory to an expense category
+            function addSubcategory(mainCategory) {
+                const subCatName = prompt(`Enter subcategory name for "${mainCategory}":`);
+                if (!subCatName || subCatName.trim() === '') return;
+                
+                const trimmedName = subCatName.trim();
+                const customCategories = loadCustomCategories();
+                
+                // Check if subcategory already exists
+                if (customCategories.expense[mainCategory] && 
+                    customCategories.expense[mainCategory].includes(trimmedName)) {
+                    alert('This subcategory already exists');
+                    return;
+                }
+                
+                if (!customCategories.expense[mainCategory]) {
+                    customCategories.expense[mainCategory] = [];
+                }
+                customCategories.expense[mainCategory].push(trimmedName);
+                saveCustomCategories(customCategories);
+                
+                updateCategoriesDisplay();
+                updateCategories();
+                
+                // Sync to Firebase
+                saveToFirebase();
+                
+                alert(`Subcategory "${trimmedName}" added to "${mainCategory}"!`);
+            }
+            
+            // Remove a subcategory
+            function removeSubcategory(mainCategory, subcategory) {
+                if (!confirm(`Remove subcategory "${subcategory}" from "${mainCategory}"?`)) return;
+                
+                const customCategories = loadCustomCategories();
+                if (customCategories.expense[mainCategory]) {
+                    customCategories.expense[mainCategory] = customCategories.expense[mainCategory].filter(s => s !== subcategory);
+                    saveCustomCategories(customCategories);
+                    
+                    updateCategoriesDisplay();
+                    updateCategories();
+                    
+                    // Sync to Firebase
+                    saveToFirebase();
+                    
+                    alert(`Subcategory "${subcategory}" removed!`);
+                }
+            }
+            
+            // Edit a subcategory (both default and custom)
+            function editSubcategory(mainCategory, oldSubcategory, isDefault) {
+                const newSubcategoryName = prompt(`Edit subcategory "${oldSubcategory}" in "${mainCategory}":`, oldSubcategory);
+                
+                if (!newSubcategoryName || newSubcategoryName.trim() === '') {
+                    return;
+                }
+                
+                const trimmedNewName = newSubcategoryName.trim();
+                
+                // Check if the new name is the same as the old one
+                if (trimmedNewName === oldSubcategory) {
+                    return;
+                }
+                
+                const customCategories = loadCustomCategories();
+                
+                if (isDefault) {
+                    // Editing a default subcategory - move to custom categories
+                    if (!customCategories.expense[mainCategory]) {
+                        customCategories.expense[mainCategory] = [];
+                    }
+                    
+                    // Check if subcategory already exists in custom
+                    if (customCategories.expense[mainCategory].includes(trimmedNewName)) {
+                        alert(`Subcategory "${trimmedNewName}" already exists in "${mainCategory}"!`);
+                        return;
+                    }
+                    
+                    // Add the new subcategory to custom
+                    customCategories.expense[mainCategory].push(trimmedNewName);
+                    
+                    // Hide the old default subcategory by removing it from the default list
+                    // We'll filter it out in the display
+                    let hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
+                    if (!hiddenDefaults.subcategories) hiddenDefaults.subcategories = {};
+                    if (!hiddenDefaults.subcategories[mainCategory]) hiddenDefaults.subcategories[mainCategory] = [];
+                    if (!hiddenDefaults.subcategories[mainCategory].includes(oldSubcategory)) {
+                        hiddenDefaults.subcategories[mainCategory].push(oldSubcategory);
+                    }
+                    localStorage.setItem('hiddenDefaultCategories', JSON.stringify(hiddenDefaults));
+                } else {
+                    // Editing a custom subcategory
+                    if (customCategories.expense[mainCategory]) {
+                        const index = customCategories.expense[mainCategory].indexOf(oldSubcategory);
+                        if (index > -1) {
+                            // Check if new name already exists
+                            if (customCategories.expense[mainCategory].includes(trimmedNewName)) {
+                                alert(`Subcategory "${trimmedNewName}" already exists in "${mainCategory}"!`);
+                                return;
+                            }
+                            customCategories.expense[mainCategory][index] = trimmedNewName;
+                        }
+                    }
+                }
+                
+                saveCustomCategories(customCategories);
+                
+                // Update all transactions that use this subcategory
+                let updatedCount = 0;
+                const oldCategoryValue = `${mainCategory}|${oldSubcategory}`;
+                const newCategoryValue = `${mainCategory}|${trimmedNewName}`;
+                
+                transactions.forEach(transaction => {
+                    if (transaction.category === oldCategoryValue && transaction.type === 'expense') {
+                        transaction.category = newCategoryValue;
+                        updatedCount++;
+                    }
+                });
+                
+                // Save changes
+                saveToFirebase();
+                
+                updateCategoriesDisplay();
+                updateCategories(); // Update dropdowns
+                renderTransactions();
+                
+                alert(`Subcategory renamed from "${oldSubcategory}" to "${trimmedNewName}"!\n${updatedCount} transaction(s) updated.`);
             }
 
             // Remove a custom category
@@ -6661,11 +7111,20 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 }
 
                 const customCategories = loadCustomCategories();
-                customCategories[type] = customCategories[type].filter(cat => cat !== categoryName);
+                
+                if (type === 'expense') {
+                    delete customCategories.expense[categoryName];
+                } else {
+                    customCategories[type] = customCategories[type].filter(cat => cat !== categoryName);
+                }
+                
                 saveCustomCategories(customCategories);
 
                 updateCategoriesDisplay();
                 updateCategories(); // Update dropdowns
+                
+                // Sync to Firebase
+                saveToFirebase();
 
                 alert(`"${categoryName}" removed from ${type} categories!`);
             }
@@ -6687,33 +7146,56 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 
                 const customCategories = loadCustomCategories();
                 
-                // Check if new name already exists
-                const allCategories = [...categories[type], ...customCategories[type]];
-                if (allCategories.some(cat => cat.toLowerCase() === trimmedNewName.toLowerCase())) {
-                    alert(`A ${type} category named "${trimmedNewName}" already exists!`);
-                    return;
-                }
-                
-                if (isDefault) {
-                    // Editing a default category - move to custom categories
-                    customCategories[type].push(trimmedNewName);
-                    // Remove the old default category from the list by hiding it (we'll filter it out)
-                    const defaultIndex = categories[type].indexOf(oldCategoryName);
-                    if (defaultIndex > -1) {
-                        // We can't modify the default array, so we'll add the new name to custom
-                        // and store which default categories to hide
+                if (type === 'expense') {
+                    // Check if new name already exists
+                    const allMainCategories = Object.keys(categories.expense).concat(Object.keys(customCategories.expense));
+                    if (allMainCategories.some(cat => cat.toLowerCase() === trimmedNewName.toLowerCase())) {
+                        alert(`An expense category named "${trimmedNewName}" already exists!`);
+                        return;
+                    }
+                    
+                    if (isDefault) {
+                        // Editing a default category - move to custom categories
+                        customCategories.expense[trimmedNewName] = categories.expense[oldCategoryName] || [];
+                        // Hide the old default category
+                        let hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
+                        if (!hiddenDefaults.expense) hiddenDefaults.expense = [];
+                        if (!hiddenDefaults.expense.includes(oldCategoryName)) {
+                            hiddenDefaults.expense.push(oldCategoryName);
+                        }
+                        localStorage.setItem('hiddenDefaultCategories', JSON.stringify(hiddenDefaults));
+                    } else {
+                        // Editing a custom category
+                        if (customCategories.expense[oldCategoryName]) {
+                            customCategories.expense[trimmedNewName] = customCategories.expense[oldCategoryName];
+                            delete customCategories.expense[oldCategoryName];
+                        }
+                    }
+                } else {
+                    // Income category - flat structure
+                    // Check if new name already exists
+                    const allCategories = categories[type].concat(customCategories[type] || []);
+                    if (allCategories.some(cat => cat.toLowerCase() === trimmedNewName.toLowerCase())) {
+                        alert(`An ${type} category named "${trimmedNewName}" already exists!`);
+                        return;
+                    }
+                    
+                    if (isDefault) {
+                        // Editing a default category - move to custom categories
+                        customCategories[type].push(trimmedNewName);
+                        // Hide the old default category
                         let hiddenDefaults = JSON.parse(localStorage.getItem('hiddenDefaultCategories') || '{}');
                         if (!hiddenDefaults[type]) hiddenDefaults[type] = [];
                         if (!hiddenDefaults[type].includes(oldCategoryName)) {
                             hiddenDefaults[type].push(oldCategoryName);
                         }
                         localStorage.setItem('hiddenDefaultCategories', JSON.stringify(hiddenDefaults));
-                    }
-                } else {
-                    // Editing a custom category
-                    const index = customCategories[type].indexOf(oldCategoryName);
-                    if (index > -1) {
-                        customCategories[type][index] = trimmedNewName;
+                    } else {
+                        // Editing a custom category
+                        const index = customCategories[type].indexOf(oldCategoryName);
+                        if (index > -1) {
+                            customCategories[type][index] = trimmedNewName;
+                        }
                     }
                 }
                 
@@ -6722,8 +7204,14 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 // Update all transactions that use this category
                 let updatedCount = 0;
                 transactions.forEach(transaction => {
-                    if (transaction.category === oldCategoryName && transaction.type === type) {
-                        transaction.category = trimmedNewName;
+                    if ((transaction.category === oldCategoryName || transaction.category.startsWith(oldCategoryName + '|')) && transaction.type === type) {
+                        if (type === 'expense' && transaction.category.includes('|')) {
+                            // Subcategory - replace main category part
+                            const subCat = transaction.category.split('|')[1];
+                            transaction.category = `${trimmedNewName}|${subCat}`;
+                        } else {
+                            transaction.category = trimmedNewName;
+                        }
                         updatedCount++;
                     }
                 });
@@ -6773,26 +7261,65 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     }).join('');
                 }
 
-                // Update expense categories
+                // Update expense categories with subcategories
                 const expenseList = document.getElementById('expenseCategoriesList');
                 if (expenseList) {
-                    // Filter out hidden default categories
-                    const visibleDefaultExpense = categories.expense.filter(cat => 
-                        !hiddenDefaults.expense || !hiddenDefaults.expense.includes(cat)
-                    );
-                    const allExpenseCategories = [...visibleDefaultExpense, ...customCategories.expense];
-                    expenseList.innerHTML = allExpenseCategories.map(cat => {
-                        const isCustom = customCategories.expense.includes(cat);
-                        return `
-                            <div class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded text-xs">
-                                <span>${cat}</span>
-                                <div class="flex gap-1">
-                                    <button onclick="editCategory('expense', '${cat}', ${!isCustom})" class="text-blue-500 hover:text-blue-700" title="Edit">✎</button>
-                                    ${isCustom ? `<button onclick="removeCustomCategory('expense', '${cat}')" class="text-red-500 hover:text-red-700 ml-1" title="Delete">×</button>` : ''}
+                    let html = '';
+                    
+                    // Default expense categories
+                    Object.keys(categories.expense).forEach(mainCat => {
+                        const isHidden = hiddenDefaults.expense && hiddenDefaults.expense.includes(mainCat);
+                        if (!isHidden) {
+                            html += `
+                                <div class="mb-3 border-l-2 border-gray-300 pl-2">
+                                    <div class="flex items-center justify-between bg-gray-100 px-2 py-1 rounded text-xs font-semibold">
+                                        <span>${mainCat}</span>
+                                        <div class="flex gap-1">
+                                            <button onclick="editCategory('expense', '${mainCat}', true)" class="text-blue-500 hover:text-blue-700" title="Edit">✎</button>
+                                        </div>
+                                    </div>
+                                    <div class="ml-2 mt-1 space-y-1">
+                                        ${categories.expense[mainCat].filter(subCat => {
+                                            // Filter out hidden subcategories
+                                            const hiddenSubs = hiddenDefaults.subcategories && hiddenDefaults.subcategories[mainCat];
+                                            return !hiddenSubs || !hiddenSubs.includes(subCat);
+                                        }).map(subCat => `
+                                            <div class="flex items-center justify-between text-xs text-gray-600 py-0.5">
+                                                <span>• ${subCat}</span>
+                                                <button onclick="editSubcategory('${mainCat}', '${subCat}', true)" class="text-blue-400 hover:text-blue-600 text-xs" title="Edit Subcategory">✎</button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    // Custom expense categories
+                    Object.keys(customCategories.expense).forEach(mainCat => {
+                        html += `
+                            <div class="mb-3 border-l-2 border-blue-300 pl-2">
+                                <div class="flex items-center justify-between bg-blue-50 px-2 py-1 rounded text-xs font-semibold">
+                                    <span>${mainCat}</span>
+                                    <div class="flex gap-1">
+                                        <button onclick="addSubcategory('${mainCat}')" class="text-green-500 hover:text-green-700" title="Add Subcategory">+</button>
+                                        <button onclick="editCategory('expense', '${mainCat}', false)" class="text-blue-500 hover:text-blue-700" title="Edit">✎</button>
+                                        <button onclick="removeCustomCategory('expense', '${mainCat}')" class="text-red-500 hover:text-red-700" title="Delete">×</button>
+                                    </div>
+                                </div>
+                                <div class="ml-2 mt-1 space-y-1">
+                                    ${(customCategories.expense[mainCat] || []).map(subCat => `
+                                        <div class="flex items-center justify-between text-xs text-gray-600 py-0.5">
+                                            <span>• ${subCat}</span>
+                                            <button onclick="removeSubcategory('${mainCat}', '${subCat}')" class="text-red-400 hover:text-red-600 text-xs">×</button>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
                         `;
-                    }).join('');
+                    });
+                    
+                    expenseList.innerHTML = html;
                 }
             }
 
