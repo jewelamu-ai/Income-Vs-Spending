@@ -89,7 +89,7 @@ A professional budget tracking application with Firebase integration
         }
         
         body.auth-ready #loginScreen.show-login {
-            display: block !important;
+            display: flex !important;
         }
         
         body.auth-ready #mainApp.show-app {
@@ -216,6 +216,158 @@ A professional budget tracking application with Firebase integration
             .chart-legend-grid-4col {
                 grid-template-columns: repeat(2, 1fr) !important;
             }
+        }
+
+        /* Forest green and cream theme */
+        body:not(.dark-mode) {
+            background-color: #f6f5eb !important;
+            color: #26352a;
+        }
+
+        body:not(.dark-mode) .bg-white {
+            background-color: #fffef8 !important;
+        }
+
+        body:not(.dark-mode) [class*="from-indigo-"],
+        body:not(.dark-mode) [class*="from-purple-"] {
+            background-image: linear-gradient(135deg, #285b3b, #477b4e) !important;
+        }
+
+        body:not(.dark-mode) [class*="bg-indigo-50"],
+        body:not(.dark-mode) [class*="bg-purple-50"] {
+            background-color: #f0f4e8 !important;
+        }
+
+        body:not(.dark-mode) [class*="bg-indigo-100"],
+        body:not(.dark-mode) [class*="bg-indigo-200"],
+        body:not(.dark-mode) [class*="bg-purple-100"],
+        body:not(.dark-mode) [class*="bg-purple-200"] {
+            background-color: #dce8d7 !important;
+        }
+
+        body:not(.dark-mode) [class*="bg-indigo-500"],
+        body:not(.dark-mode) [class*="bg-purple-500"] {
+            background-color: #39764c !important;
+        }
+
+        body:not(.dark-mode) [class*="bg-indigo-600"],
+        body:not(.dark-mode) [class*="bg-indigo-700"],
+        body:not(.dark-mode) [class*="bg-purple-600"],
+        body:not(.dark-mode) [class*="bg-purple-700"] {
+            background-color: #285b3b !important;
+        }
+
+        body:not(.dark-mode) [class*="text-indigo-"],
+        body:not(.dark-mode) [class*="text-purple-"] {
+            color: #326343 !important;
+        }
+
+        body:not(.dark-mode) [class*="border-indigo-"],
+        body:not(.dark-mode) [class*="border-purple-"] {
+            border-color: #c5d5bd !important;
+        }
+
+        body:not(.dark-mode) [class*="ring-indigo-"],
+        body:not(.dark-mode) [class*="ring-purple-"],
+        body:not(.dark-mode) [class*="focus:ring-indigo-"],
+        body:not(.dark-mode) [class*="focus:ring-purple-"] {
+            --tw-ring-color: #6f9b72 !important;
+        }
+
+        body:not(.dark-mode) [class*="hover:bg-indigo-"]:hover,
+        body:not(.dark-mode) [class*="hover:bg-purple-"]:hover {
+            background-color: #214b31 !important;
+        }
+
+        body:not(.dark-mode) [class*="hover:text-indigo-"]:hover,
+        body:not(.dark-mode) [class*="hover:text-purple-"]:hover {
+            color: #214b31 !important;
+        }
+
+        body:not(.dark-mode) .tab-active,
+        body:not(.dark-mode) .tab-active svg {
+            color: #285b3b !important;
+            stroke: #285b3b !important;
+        }
+
+        body:not(.dark-mode) .spinner {
+            border-top-color: #39764c;
+        }
+
+        body:not(.dark-mode) .filter-btn-active.filter-all {
+            background-color: #285b3b !important;
+            border-color: #285b3b !important;
+        }
+
+        body.dark-mode [class*="from-indigo-"],
+        body.dark-mode [class*="from-purple-"] {
+            background-image: linear-gradient(135deg, #173b27, #285b3b) !important;
+        }
+
+        body.dark-mode [class*="bg-indigo-50"],
+        body.dark-mode [class*="bg-purple-50"] {
+            background-color: #263b2b !important;
+        }
+
+        body.dark-mode [class*="bg-indigo-100"],
+        body.dark-mode [class*="bg-indigo-200"],
+        body.dark-mode [class*="bg-purple-100"],
+        body.dark-mode [class*="bg-purple-200"] {
+            background-color: #314a36 !important;
+        }
+
+        body.dark-mode [class*="bg-indigo-500"],
+        body.dark-mode [class*="bg-purple-500"] {
+            background-color: #39764c !important;
+        }
+
+        body.dark-mode [class*="bg-indigo-600"],
+        body.dark-mode [class*="bg-indigo-700"],
+        body.dark-mode [class*="bg-purple-600"],
+        body.dark-mode [class*="bg-purple-700"] {
+            background-color: #285b3b !important;
+        }
+
+        body.dark-mode [class*="text-indigo-"],
+        body.dark-mode [class*="text-purple-"] {
+            color: #a9d0a6 !important;
+        }
+
+        body.dark-mode [class*="border-indigo-"],
+        body.dark-mode [class*="border-purple-"] {
+            border-color: #48664a !important;
+        }
+
+        body.dark-mode [class*="ring-indigo-"],
+        body.dark-mode [class*="ring-purple-"],
+        body.dark-mode [class*="focus:ring-indigo-"],
+        body.dark-mode [class*="focus:ring-purple-"] {
+            --tw-ring-color: #6f9b72 !important;
+        }
+
+        body.dark-mode [class*="hover:bg-indigo-"]:hover,
+        body.dark-mode [class*="hover:bg-purple-"]:hover {
+            background-color: #173b27 !important;
+        }
+
+        body.dark-mode [class*="hover:text-indigo-"]:hover,
+        body.dark-mode [class*="hover:text-purple-"]:hover {
+            color: #c5e0c3 !important;
+        }
+
+        body.dark-mode .tab-active,
+        body.dark-mode .tab-active svg {
+            color: #a9d0a6 !important;
+            stroke: #a9d0a6 !important;
+        }
+
+        body.dark-mode .spinner {
+            border-top-color: #6f9b72;
+        }
+
+        body.dark-mode .filter-btn-active.filter-all {
+            background-color: #285b3b !important;
+            border-color: #285b3b !important;
         }
     </style>
 </head>
@@ -924,7 +1076,7 @@ A professional budget tracking application with Firebase integration
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select id="category" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
+                    <select id="category" onchange="handleExpenseCategoryChange()" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
                 </div>
 
                 <div id="accountField">
@@ -989,7 +1141,8 @@ A professional budget tracking application with Firebase integration
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <input type="text" id="description" placeholder="What was this for?" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <input type="text" id="description" oninput="suggestExpenseCategory()" placeholder="What was this for?" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <p id="categorySuggestion" class="text-xs text-indigo-600 mt-1" aria-live="polite">For expenses, a category will be suggested as you describe the transaction.</p>
                 </div>
 
                 <div>
@@ -1747,6 +1900,8 @@ A professional budget tracking application with Firebase integration
         let analyticsChart = null;
         let editingTransactionId = null; // Track if editing a transaction
         let selectedTransactions = new Set(); // Track selected transactions for bulk delete
+        let undoDeleteTimer = null;
+        let undoDeleteNotification = null;
         
         // Email notification settings
         let emailNotifications = {
@@ -3084,6 +3239,7 @@ function reduceLoanAssets(repaymentAmount) {
         // ============================================
         function setType(type) {
             currentType = type;
+            lastAutoSuggestedCategory = '';
             
             // Update button styles
             document.getElementById('typeIncome').className = type === 'income'
@@ -3123,6 +3279,90 @@ function reduceLoanAssets(repaymentAmount) {
             }
             
             updateCategories();
+            suggestExpenseCategory();
+        }
+
+        let lastAutoSuggestedCategory = '';
+
+        function handleExpenseCategoryChange() {
+            lastAutoSuggestedCategory = '';
+        }
+
+        function suggestExpenseCategory() {
+            const suggestionMessage = document.getElementById('categorySuggestion');
+            const categorySelect = document.getElementById('category');
+            if (!suggestionMessage || !categorySelect) return;
+
+            if (currentType !== 'expense') {
+                suggestionMessage.textContent = '';
+                return;
+            }
+
+            const description = document.getElementById('description').value.trim().toLowerCase();
+            const currentCategory = categorySelect.value;
+            if (currentCategory && currentCategory !== lastAutoSuggestedCategory) {
+                suggestionMessage.textContent = 'Category selected manually.';
+                return;
+            }
+
+            if (!description) {
+                if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
+                    categorySelect.value = '';
+                }
+                lastAutoSuggestedCategory = '';
+                suggestionMessage.textContent = 'Add a description to get a category suggestion.';
+                return;
+            }
+
+            const keywordCategories = [
+                { keywords: ['fuel station', 'petrol', 'diesel', 'fuel', 'gas station'], category: 'Transport|Fuel' },
+                { keywords: ['uber', 'bolt', 'taxi', 'ride-hailing'], category: 'Transport|Taxi/Ride' },
+                { keywords: ['parking'], category: 'Transport|Parking' },
+                { keywords: ['car repair', 'vehicle maintenance', 'mechanic', 'tyre', 'tire'], category: 'Transport|Vehicle Maintenance' },
+                { keywords: ['bus', 'train', 'trotro', 'tro tro'], category: 'Transport|Bus/Train' },
+                { keywords: ['electricity', 'ecg', 'prepaid meter', 'power bill'], category: 'Bills|Electricity' },
+                { keywords: ['water bill', 'water utility'], category: 'Bills|Water' },
+                { keywords: ['internet', 'broadband', 'wifi'], category: 'Bills|Internet' },
+                { keywords: ['phone bill', 'mobile data', 'airtime', 'top-up', 'top up'], category: 'Bills|Phone' },
+                { keywords: ['rent'], category: 'Bills|Rent' },
+                { keywords: ['pharmacy', 'medicine', 'medication'], category: 'Health|Pharmacy' },
+                { keywords: ['clinic', 'hospital'], category: 'Health|Medical' },
+                { keywords: ['dentist', 'dental'], category: 'Health|Dental' },
+                { keywords: ['gym'], category: 'Health|Gym' },
+                { keywords: ['grocery', 'groceries', 'supermarket', 'market'], category: 'Food|Groceries' },
+                { keywords: ['restaurant', 'lunch', 'dinner', 'breakfast', 'chop bar', 'fast food'], category: 'Food|Restaurants' },
+                { keywords: ['movie', 'cinema'], category: 'Entertainment|Movies' },
+                { keywords: ['tuition', 'school fees'], category: 'Education|Tuition' },
+                { keywords: ['book', 'textbook'], category: 'Education|Books' },
+                { keywords: ['clothing', 'clothes', 'shoes'], category: 'Shopping|Clothing' },
+                { keywords: ['electronics', 'phone purchase'], category: 'Shopping|Electronics' }
+            ];
+
+            const descriptionWords = description.match(/[a-z0-9]+/g) || [];
+            const match = keywordCategories.find(rule =>
+                rule.keywords.some(keyword => {
+                    const keywordWords = keyword.match(/[a-z0-9]+/g) || [];
+                    return descriptionWords.some((_, index) =>
+                        descriptionWords.slice(index, index + keywordWords.length).join(' ') === keywordWords.join(' ')
+                    );
+                })
+            );
+            const suggestedCategory = match && Array.from(categorySelect.options)
+                .some(option => option.value === match.category)
+                ? match.category
+                : '';
+
+            if (suggestedCategory) {
+                categorySelect.value = suggestedCategory;
+                lastAutoSuggestedCategory = suggestedCategory;
+                suggestionMessage.textContent = `Suggested: ${suggestedCategory.replace('|', ' → ')}. You can change it.`;
+            } else {
+                if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
+                    categorySelect.value = '';
+                }
+                lastAutoSuggestedCategory = '';
+                suggestionMessage.textContent = 'No match found. Please choose a category.';
+            }
         }
 
         function updateCategories() {
@@ -4112,13 +4352,6 @@ function reduceLoanAssets(repaymentAmount) {
                     return false;
                 }
                 
-                // Check if source account has sufficient balance (including charge)
-                const totalDeduction = amount + (transactionCharge || 0);
-                if (fromAccount.balance < totalDeduction) {
-                    alert(`Insufficient funds in ${fromAccount.name} (${fromProfile.name}). Available: GHS${fromAccount.balance.toFixed(2)}, Required: GHS${totalDeduction.toFixed(2)}`);
-                    return false;
-                }
-                
                 // Create expense transaction in source profile
                 const expenseTransaction = {
                     id: Date.now().toString() + Math.random().toString(36).slice(2),
@@ -4397,6 +4630,83 @@ function reduceLoanAssets(repaymentAmount) {
                 }
             }
 
+            function findDuplicateTransaction(candidate) {
+                const dateKey = String(candidate.date || '').slice(0, 10);
+                const toCents = value => Math.round(Number(value || 0) * 100);
+
+                return transactions.find(transaction => {
+                    if (transaction.id === candidate.excludeId || transaction.type !== candidate.type) {
+                        return false;
+                    }
+                    if (String(transaction.date || '').slice(0, 10) !== dateKey) {
+                        return false;
+                    }
+
+                    if (candidate.type === 'transfer') {
+                        return transaction.fromAccount === candidate.fromAccount &&
+                            transaction.toAccount === candidate.toAccount &&
+                            toCents(transaction.amount) === toCents(candidate.amount) &&
+                            toCents(transaction.charge) === toCents(candidate.charge) &&
+                            toCents(transaction.interest) === toCents(candidate.interest);
+                    }
+
+                    const candidateStoredAmount = candidate.type === 'expense'
+                        ? Number(candidate.amount) + Number(candidate.charge || 0)
+                        : Number(candidate.amount);
+                    return transaction.account === candidate.account &&
+                        transaction.category === candidate.category &&
+                        toCents(transaction.amount) === toCents(candidateStoredAmount) &&
+                        toCents(transaction.charge) === toCents(candidate.charge);
+                });
+            }
+
+            function confirmNoDuplicateTransaction(candidate) {
+                const duplicate = findDuplicateTransaction(candidate);
+                if (!duplicate) return true;
+
+                const duplicateDescription = duplicate.description
+                    ? ` (${duplicate.description})`
+                    : '';
+                return confirm(
+                    `A similar ${candidate.type} transaction already exists for this date, amount, account, and category${duplicateDescription}. Save this one anyway?`
+                );
+            }
+
+            function getBalanceBeforeTransactionEdit(accountId, transaction) {
+                const account = accounts.find(item => item.id === accountId);
+                let balance = Number(account?.balance || 0);
+                if (!transaction || !account) return balance;
+
+                if (transaction.type === 'expense' && transaction.account === accountId) {
+                    balance += Number(transaction.amount || 0);
+                } else if (transaction.type === 'income' && transaction.account === accountId) {
+                    balance -= Number(transaction.amount || 0);
+                    balance += Number(transaction.charge || 0);
+                } else if (transaction.type === 'transfer' && transaction.fromAccount === accountId) {
+                    balance += Number(transaction.amount || 0);
+                    balance += Number(transaction.charge || 0);
+                }
+
+                return balance;
+            }
+
+            function confirmAccountBalanceImpact(accountId, debitAmount, creditAmount = 0, transactionBeingEdited = null, accountOverride = null) {
+                const account = accountOverride || accounts.find(item => item.id === accountId);
+                if (!account) return true;
+
+                const startingBalance = accountOverride
+                    ? Number(accountOverride.balance || 0)
+                    : getBalanceBeforeTransactionEdit(accountId, transactionBeingEdited);
+                const projectedBalance = startingBalance - Number(debitAmount || 0) + Number(creditAmount || 0);
+                if (projectedBalance >= -0.0001) return true;
+
+                const overdrawnAmount = Math.abs(projectedBalance);
+                return confirm(
+                    `Warning: this transaction will overdraw "${account.name}" by ${currency}${formatAmount(overdrawnAmount)}. ` +
+                    `Its projected balance will be -${currency}${formatAmount(overdrawnAmount)}. Continue with this transaction?`
+                );
+            }
+
             function addTransaction() {
                 const amount = parseFloat(document.getElementById('amount').value);
                 const date = document.getElementById('date').value;
@@ -4420,6 +4730,22 @@ function reduceLoanAssets(repaymentAmount) {
                 }
 
                 if (currentType === 'profile-transfer') {
+                    const sourceProfile = profiles.find(profile =>
+                        profile.id === document.getElementById('fromProfileSelect').value
+                    );
+                    const sourceAccount = sourceProfile?.data?.accounts?.find(account =>
+                        account.id === document.getElementById('fromProfileAccountSelect').value
+                    );
+                    if (sourceAccount && !confirmAccountBalanceImpact(
+                        sourceAccount.id,
+                        amount + transactionCharge,
+                        0,
+                        null,
+                        sourceAccount
+                    )) {
+                        return;
+                    }
+
                     // Handle profile-to-profile transfer
                     if (executeProfileTransfer(amount, description, date, transactionCharge)) {
                         closeTransactionModal();
@@ -4442,6 +4768,22 @@ function reduceLoanAssets(repaymentAmount) {
                     
                     if (fromAccount === toAccount) {
                         alert('Cannot transfer to the same account');
+                        return;
+                    }
+
+                    if (!confirmNoDuplicateTransaction({
+                        type: 'transfer',
+                        date,
+                        amount,
+                        charge: transactionCharge,
+                        interest: transferInterest,
+                        fromAccount,
+                        toAccount
+                    })) {
+                        return;
+                    }
+
+                    if (!confirmAccountBalanceImpact(fromAccount, amount + transactionCharge)) {
                         return;
                     }
 
@@ -4498,25 +4840,24 @@ function reduceLoanAssets(repaymentAmount) {
                         alert('Please fill in required fields');
                         return;
                     }
-                    
-                    // For expenses, check if account has sufficient balance (with small precision tolerance)
-                    if (currentType === 'expense') {
-                        const selectedAccount = accounts.find(a => a.id === account);
-                        const currentBalance = Number(selectedAccount?.balance || 0);
-                        if (amount > currentBalance + 0.0001) {
-                            alert(`Insufficient balance! Account has ${currency}${currentBalance.toFixed(2)} but you're trying to spend ${currency}${amount.toFixed(2)}`);
-                            return;
-                        }
+
+                    if (!confirmNoDuplicateTransaction({
+                        type: currentType,
+                        date,
+                        amount,
+                        charge: transactionCharge,
+                        category,
+                        account
+                    })) {
+                        return;
                     }
                     
-                    // For transfers, check if from-account has sufficient balance (with small precision tolerance)
-                    if (currentType === 'transfer') {
-                        const fromAcc = accounts.find(a => a.id === fromAccount);
-                        const fromBalance = Number(fromAcc?.balance || 0);
-                        if (amount > fromBalance + 0.0001) {
-                            alert(`Insufficient balance in "${fromAcc?.name || 'source account'}"! Current balance: ${currency}${fromBalance.toFixed(2)}`);
-                            return;
-                        }
+                    const accountDebit = currentType === 'expense'
+                        ? amount + transactionCharge
+                        : transactionCharge;
+                    const accountCredit = currentType === 'income' ? amount : 0;
+                    if (!confirmAccountBalanceImpact(account, accountDebit, accountCredit)) {
+                        return;
                     }
                     
                     transactions.push({
@@ -4655,6 +4996,10 @@ function reduceLoanAssets(repaymentAmount) {
                     return;
                 }
 
+                if (!confirmAccountBalanceImpact(sourceAccount.id, amount)) {
+                    return;
+                }
+
                 const date = new Date().toISOString().slice(0, 16);
                 const description = `Loan from ${sourceAccount.name} to Bolop`;
 
@@ -4744,11 +5089,15 @@ function reduceLoanAssets(repaymentAmount) {
                 }
 
                 const destinationAccount = accounts[destinationIndex - 1];
-                const maxRepay = Math.min(Number(chosenLiability.amount), Number(bolop.balance));
+                const maxRepay = Number(chosenLiability.amount);
                 const amount = parseFloat(prompt(`Enter repayment amount (max GHS${maxRepay.toFixed(2)}):`, maxRepay.toFixed(2)));
 
                 if (isNaN(amount) || amount <= 0 || amount > maxRepay + 0.0001) {
-                    alert('Please enter a valid repayment amount not exceeding Bolop balance and outstanding loan.');
+                    alert('Please enter a valid repayment amount not exceeding the outstanding loan.');
+                    return;
+                }
+
+                if (!confirmAccountBalanceImpact(bolop.id, amount)) {
                     return;
                 }
 
@@ -4795,6 +5144,44 @@ function reduceLoanAssets(repaymentAmount) {
                 setTimeout(() => {
                     notification.remove();
                 }, 2000);
+            }
+
+            function showUndoDeleteNotification(transactionIds, count) {
+                if (undoDeleteTimer) clearTimeout(undoDeleteTimer);
+                if (undoDeleteNotification) undoDeleteNotification.remove();
+
+                const notification = document.createElement('div');
+                notification.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-4 text-sm';
+                notification.setAttribute('role', 'status');
+                notification.innerHTML = `
+                    <span>${count} transaction${count === 1 ? '' : 's'} deleted.</span>
+                    <button type="button" class="font-semibold text-indigo-300 hover:text-white underline">Undo</button>
+                `;
+                notification.querySelector('button').addEventListener('click', () => {
+                    let restoredCount = 0;
+                    transactionIds.forEach(transactionId => {
+                        const deletedIndex = deletedTransactions.findIndex(item => item.id === transactionId);
+                        if (deletedIndex !== -1 && restoreTransaction(deletedIndex, true)) {
+                            restoredCount++;
+                        }
+                    });
+                    notification.remove();
+                    undoDeleteNotification = null;
+                    if (undoDeleteTimer) clearTimeout(undoDeleteTimer);
+                    undoDeleteTimer = null;
+                    showQuickNotification(
+                        restoredCount
+                            ? `${restoredCount} transaction${restoredCount === 1 ? '' : 's'} restored`
+                            : 'No deleted transactions could be restored'
+                    );
+                });
+                document.body.appendChild(notification);
+                undoDeleteNotification = notification;
+                undoDeleteTimer = setTimeout(() => {
+                    notification.remove();
+                    undoDeleteNotification = null;
+                    undoDeleteTimer = null;
+                }, 8000);
             }
 
             function editTransaction(transactionId) {
@@ -4874,6 +5261,58 @@ function reduceLoanAssets(repaymentAmount) {
                 if (transferInterest < 0) {
                     alert('Investment interest cannot be negative');
                     return;
+                }
+
+                if (transaction.type === 'transfer') {
+                    if (!confirmNoDuplicateTransaction({
+                        type: 'transfer',
+                        date,
+                        amount,
+                        charge: transactionCharge,
+                        interest: transferInterest,
+                        fromAccount: document.getElementById('fromAccountSelect').value,
+                        toAccount: document.getElementById('toAccountSelect').value,
+                        excludeId: transactionId
+                    })) {
+                        return;
+                    }
+                } else if (transaction.type !== 'profile-transfer') {
+                    if (!confirmNoDuplicateTransaction({
+                        type: transaction.type,
+                        date,
+                        amount,
+                        charge: transactionCharge,
+                        category: document.getElementById('category').value,
+                        account: document.getElementById('accountSelect').value,
+                        excludeId: transactionId
+                    })) {
+                        return;
+                    }
+                }
+
+                if (transaction.type === 'transfer') {
+                    if (!confirmAccountBalanceImpact(
+                        document.getElementById('fromAccountSelect').value,
+                        amount + transactionCharge,
+                        0,
+                        transaction
+                    )) {
+                        return;
+                    }
+                } else if (transaction.type === 'expense' || transaction.type === 'income') {
+                    const accountId = document.getElementById('accountSelect').value;
+                    const debitAmount = transaction.type === 'expense'
+                        ? amount + transactionCharge
+                        : transactionCharge;
+                    const creditAmount = transaction.type === 'income' ? amount : 0;
+                    if (!confirmAccountBalanceImpact(
+                        accountId,
+                        debitAmount,
+                        creditAmount,
+                        transaction
+                    )) {
+                        return;
+                    }
                 }
 
                 // Reverse old transaction effects
@@ -5016,6 +5455,8 @@ function reduceLoanAssets(repaymentAmount) {
                     return;
                 }
 
+                const transactionsToDelete = [transaction];
+
                 // Reverse transaction effects
                 if (transaction.type === 'transfer') {
                     const fromAcc = accounts.find(a => a.id === transaction.fromAccount);
@@ -5034,7 +5475,7 @@ function reduceLoanAssets(repaymentAmount) {
                                 t.relatedTransferId === transactionId
                             );
                             if (interestTxnId !== -1) {
-                                transactions.splice(interestTxnId, 1);
+                                transactionsToDelete.push(transactions.splice(interestTxnId, 1)[0]);
                             }
                         }
                     }
@@ -5068,10 +5509,11 @@ function reduceLoanAssets(repaymentAmount) {
                 }
 
                 // Save to deleted transactions (keep last 50)
-                deletedTransactions.unshift({
-                    ...transaction,
-                    deletedAt: new Date().toISOString()
-                });
+                const deletedAt = new Date().toISOString();
+                deletedTransactions.unshift(...transactionsToDelete.map(item => ({
+                    ...item,
+                    deletedAt
+                })));
                 if (deletedTransactions.length > 50) {
                     deletedTransactions = deletedTransactions.slice(0, 50);
                 }
@@ -5079,12 +5521,13 @@ function reduceLoanAssets(repaymentAmount) {
                 // Remove transaction
                 transactions = transactions.filter(t => t.id !== transactionId);
                 editingTransactionId = null;
+                recalculateAccountBalances();
                 saveToFirebase();
                 renderTransactions();
                 updateTotals();
                 renderAccounts();
                 renderBudgets();
-                alert('Transaction deleted successfully!');
+                showUndoDeleteNotification(transactionsToDelete.map(item => item.id), 1);
             }
 
             function toggleTransactionSelection(transactionId) {
@@ -5211,9 +5654,11 @@ function reduceLoanAssets(repaymentAmount) {
 
                 // Save deleted transactions to history (keep last 50)
                 const now = new Date().toISOString();
+                const deletedTransactionIds = [];
                 transactionsToDelete.forEach(transactionId => {
                     const transaction = transactions.find(t => t.id === transactionId);
                     if (transaction) {
+                        deletedTransactionIds.push(transaction.id);
                         deletedTransactions.unshift({
                             ...transaction,
                             deletedAt: now
@@ -5237,11 +5682,10 @@ function reduceLoanAssets(repaymentAmount) {
                 updateTotals();
                 renderAccounts();
                 renderBudgets();
-                
-                alert(`${count} transaction${count > 1 ? 's' : ''} deleted successfully!`);
+                showUndoDeleteNotification(deletedTransactionIds, deletedTransactionIds.length);
             }
             
-            function restoreTransaction(deletedIndex) {
+            function restoreTransaction(deletedIndex, silent = false) {
                 if (deletedIndex < 0 || deletedIndex >= deletedTransactions.length) {
                     alert('Transaction not found in deleted history');
                     return;
@@ -5307,7 +5751,8 @@ function reduceLoanAssets(repaymentAmount) {
                 renderBudgets();
                 renderDeletedTransactions();
                 
-                alert('Transaction restored successfully!');
+                if (!silent) alert('Transaction restored successfully!');
+                return true;
             }
             
             function renderDeletedTransactions() {
@@ -8210,13 +8655,22 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
 
                     const totalSpent = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
                     const categoryCount = Object.keys(categoryData).length;
+                    const sortedCategories = Object.entries(categoryData).sort((a, b) => b[1] - a[1]);
+                    const visibleCategories = sortedCategories.slice(0, 6);
+                    const remainingCategories = sortedCategories.slice(6);
+                    if (remainingCategories.length > 0) {
+                        visibleCategories.push([
+                            'Other categories',
+                            remainingCategories.reduce((sum, [, amount]) => sum + amount, 0)
+                        ]);
+                    }
 
                     chartConfig = {
                         type: 'doughnut',
                         data: {
-                            labels: Object.keys(categoryData),
+                            labels: visibleCategories.map(([category]) => category),
                             datasets: [{
-                                data: Object.values(categoryData),
+                                data: visibleCategories.map(([, amount]) => amount),
                                 backgroundColor: [
                                     '#E63946', '#457B9D', '#F1C40F', '#2ECC71', '#9B59B6', '#E67E22',
                                     '#1ABC9C', '#E74C3C', '#3498DB', '#F39C12', '#8E44AD', '#16A085',
@@ -8252,7 +8706,9 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Spending by Category' + dateRangeText
+                                    text: 'Spending by Category' +
+                                        (remainingCategories.length > 0 ? ' (top 6 + other)' : '') +
+                                        dateRangeText
                                 }
                             },
                             layout: {
@@ -8665,6 +9121,12 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     });
 
                     const sortedMonths = Object.keys(monthlyData).sort();
+                    const monthlyTotals = sortedMonths.reduce((totals, month) => {
+                        totals.income += monthlyData[month].income;
+                        totals.expense += monthlyData[month].expense;
+                        return totals;
+                    }, { income: 0, expense: 0 });
+                    const netCashFlow = monthlyTotals.income - monthlyTotals.expense;
                     
                     chartConfig = {
                         type: 'line',
@@ -8732,7 +9194,21 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
 
                     summaryEl.innerHTML = `
                         <div class="bg-white rounded-xl shadow-md p-4">
-                            <h3 class="text-lg font-semibold mb-3">Monthly Summary</h3>
+                            <h3 class="text-lg font-semibold mb-3">Monthly Overview${dateRangeText}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <div class="rounded-lg border border-green-200 bg-green-50 p-3">
+                                    <p class="text-sm text-gray-600">Total Income</p>
+                                    <p class="text-xl font-bold text-green-700">${currency}${formatAmount(monthlyTotals.income)}</p>
+                                </div>
+                                <div class="rounded-lg border border-red-200 bg-red-50 p-3">
+                                    <p class="text-sm text-gray-600">Total Expenses</p>
+                                    <p class="text-xl font-bold text-red-700">${currency}${formatAmount(monthlyTotals.expense)}</p>
+                                </div>
+                                <div class="rounded-lg border ${netCashFlow >= 0 ? 'border-indigo-200 bg-indigo-50' : 'border-orange-200 bg-orange-50'} p-3">
+                                    <p class="text-sm text-gray-600">Net Cash Flow</p>
+                                    <p class="text-xl font-bold ${netCashFlow >= 0 ? 'text-indigo-700' : 'text-orange-700'}">${netCashFlow < 0 ? '-' : ''}${currency}${formatAmount(Math.abs(netCashFlow))}</p>
+                                </div>
+                            </div>
                             ${sortedMonths.map(month => {
                                 const data = monthlyData[month];
                                 const net = data.income - data.expense;
