@@ -776,6 +776,7 @@ A professional budget tracking application with Firebase integration
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-md p-4">
+                    <div id="uncategorizedAnalyticsNotice" class="hidden mb-4"></div>
                     <canvas id="analyticsChart"></canvas>
                     <div id="chartLegend" class="mt-3"></div>
                 </div>
@@ -8740,6 +8741,79 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 }
             }
 
+            function hasTransactionCategory(transaction) {
+                return typeof transaction.category === 'string' && transaction.category.trim() !== '';
+            }
+
+            function renderUncategorizedAnalyticsNotice(allTransactions, filteredTransactions) {
+                const notice = document.getElementById('uncategorizedAnalyticsNotice');
+                if (!notice) return;
+
+                const uncategorizedTransactions = allTransactions.filter(transaction =>
+                    (transaction.type === 'income' || transaction.type === 'expense') &&
+                    !hasTransactionCategory(transaction)
+                );
+                const filteredUncategorizedTransactions = filteredTransactions.filter(transaction =>
+                    (transaction.type === 'income' || transaction.type === 'expense') &&
+                    !hasTransactionCategory(transaction)
+                );
+                notice.replaceChildren();
+
+                const totalAmount = uncategorizedTransactions.reduce(
+                    (sum, transaction) => sum + Math.abs(Number(transaction.amount) || 0),
+                    0
+                );
+                const title = document.createElement('p');
+                title.className = uncategorizedTransactions.length > 0
+                    ? 'font-semibold text-amber-900'
+                    : 'font-semibold text-green-900';
+                title.textContent = uncategorizedTransactions.length > 0
+                    ? `${uncategorizedTransactions.length} income/expense transaction${uncategorizedTransactions.length === 1 ? '' : 's'} have no category`
+                    : 'All income and expense transactions have categories';
+
+                const explanation = document.createElement('p');
+                explanation.className = uncategorizedTransactions.length > 0
+                    ? 'text-sm text-amber-800 mt-1'
+                    : 'text-sm text-green-800 mt-1';
+                explanation.textContent = uncategorizedTransactions.length > 0
+                    ? `Their combined amount is ${currency}${formatAmount(totalAmount)}. They are excluded from category-based analytics totals; monthly and income-versus-expense totals still include them. ${filteredUncategorizedTransactions.length} are in the current date range.`
+                    : 'No transactions are currently excluded from analytics because of a missing category.';
+
+                notice.className = uncategorizedTransactions.length > 0
+                    ? 'mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3'
+                    : 'mb-4 rounded-lg border border-green-300 bg-green-50 p-3';
+                notice.append(title, explanation);
+
+                if (uncategorizedTransactions.length > 0) {
+                    const details = document.createElement('details');
+                    details.className = 'mt-2';
+                    const summary = document.createElement('summary');
+                    summary.className = 'cursor-pointer text-sm font-medium text-amber-900';
+                    summary.textContent = 'View all transactions without categories';
+                    details.appendChild(summary);
+
+                    const list = document.createElement('ul');
+                    list.className = 'mt-2 space-y-1 text-sm text-amber-900';
+                    uncategorizedTransactions.forEach(transaction => {
+                        const item = document.createElement('li');
+                        const account = accounts.find(candidate =>
+                            candidate.id === transaction.account
+                        );
+                        const date = transaction.date
+                            ? new Date(transaction.date).toLocaleDateString()
+                            : 'No date';
+                        const description = transaction.description || 'No description';
+                        item.textContent =
+                            `${date} · ${transaction.type === 'income' ? 'Income' : 'Expense'} · ` +
+                            `${description} · ${currency}${formatAmount(Math.abs(Number(transaction.amount) || 0))}` +
+                            (account ? ` · ${account.name}` : '');
+                        list.appendChild(item);
+                    });
+                    details.appendChild(list);
+                    notice.appendChild(details);
+                }
+            }
+
             function updateAnalytics() {
                 const type = document.getElementById('analyticsType').value;
                 const ctx = document.getElementById('analyticsChart').getContext('2d');
@@ -8768,6 +8842,8 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     });
                 }
 
+                renderUncategorizedAnalyticsNotice(transactions, filteredTransactions);
+
                 // Destroy existing chart
                 if (analyticsChart) {
                     analyticsChart.destroy();
@@ -8790,8 +8866,8 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 if (type === 'category') {
                     // Spending by category
                     const categoryData = {};
-                    filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
-                        const category = t.category || 'Uncategorized';
+                    filteredTransactions.filter(t => t.type === 'expense' && hasTransactionCategory(t)).forEach(t => {
+                        const category = t.category.trim();
                         categoryData[category] = (categoryData[category] || 0) + Math.abs(t.amount);
                     });
 
@@ -8896,7 +8972,7 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     const incomeSourcesData = {};
                     let totalIncome = 0;
                     
-                    filteredTransactions.filter(t => t.type === 'income').forEach(t => {
+                    filteredTransactions.filter(t => t.type === 'income' && hasTransactionCategory(t)).forEach(t => {
                         const account = accounts.find(a => a.id === t.account);
                         const accountName = account ? account.name : 'Unknown Account';
                         incomeSourcesData[accountName] = (incomeSourcesData[accountName] || 0) + t.amount;
