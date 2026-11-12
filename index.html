@@ -690,6 +690,12 @@ A professional budget tracking application with Firebase integration
                         <button onclick="setFilter('expense', event)" id="filterExpense" class="filter-btn px-3 py-2 text-sm rounded-lg bg-red-100 text-red-700 border-2 border-red-200 transition-all duration-200 hover:shadow-lg">Expense</button>
                         <button onclick="setFilter('transfer', event)" id="filterTransfer" class="filter-btn px-3 py-2 text-sm rounded-lg bg-blue-100 text-blue-700 border-2 border-blue-200 transition-all duration-200 hover:shadow-lg">Transfers</button>
                     </div>
+                    <div id="incomeSourceFilterContainer" class="hidden w-full md:w-auto">
+                        <label for="incomeSourceFilter" class="sr-only">Filter income by source</label>
+                        <select id="incomeSourceFilter" class="w-full md:w-auto px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="handleSearch()">
+                            <option value="">All income sources</option>
+                        </select>
+                    </div>
                     <div class="flex gap-2 items-center flex-wrap w-full md:w-auto">
                         <input type="text" id="searchInput" placeholder="Search..." class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 md:flex-initial" oninput="handleSearch()">
                         <div class="flex items-center gap-1">
@@ -3562,6 +3568,8 @@ function reduceLoanAssets(repaymentAmount) {
                 const el = document.getElementById('transactionsList');
                 if (!el) return;
                 
+                updateIncomeSourceFilter();
+
                 // Update bulk actions bar visibility
                 updateBulkActionsBar();
                 
@@ -3588,6 +3596,11 @@ function reduceLoanAssets(repaymentAmount) {
                     filteredTransactions = transactions.filter(t => t.type === 'expense');
                 } else if (currentFilter === 'transfer') {
                     filteredTransactions = transactions.filter(t => t.type === 'transfer');
+                }
+
+                const incomeSource = document.getElementById('incomeSourceFilter')?.value || '';
+                if (currentFilter === 'income' && incomeSource) {
+                    filteredTransactions = filteredTransactions.filter(t => t.category === incomeSource);
                 }
                 
                 // Filter by account if not "All Accounts"
@@ -3666,7 +3679,7 @@ function reduceLoanAssets(repaymentAmount) {
                 if (summaryEl && filteredTransactions.length > 0) {
                     summaryEl.innerHTML = `
                         <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-md p-4 border border-indigo-200">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-3">Filtered Results Summary</h3>
+                            <h3 id="transactionsSummaryTitle" class="text-sm font-semibold text-gray-700 mb-3">${currentFilter === 'income' && incomeSource ? 'Income Source Summary' : 'Filtered Results Summary'}</h3>
                             <div class="grid grid-cols-3 gap-3">
                                 <div class="bg-white rounded-lg p-3 border border-green-200">
                                     <p class="text-xs text-gray-600 mb-1">Income</p>
@@ -3686,6 +3699,9 @@ function reduceLoanAssets(repaymentAmount) {
                             <p class="text-xs text-gray-500 mt-2">Showing ${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''}</p>
                         </div>
                     `;
+                    if (currentFilter === 'income' && incomeSource) {
+                        summaryEl.querySelector('#transactionsSummaryTitle').textContent = `Income Source Summary: ${incomeSource}`;
+                    }
                 } else if (summaryEl) {
                     summaryEl.innerHTML = '';
                 }
@@ -5813,6 +5829,39 @@ function reduceLoanAssets(repaymentAmount) {
             
             function closeDeletedTransactionsModal() {
                 document.getElementById('deletedTransactionsModal').classList.add('hidden');
+            }
+
+            function updateIncomeSourceFilter() {
+                const container = document.getElementById('incomeSourceFilterContainer');
+                const select = document.getElementById('incomeSourceFilter');
+                if (!container || !select) return;
+
+                container.classList.toggle('hidden', currentFilter !== 'income');
+                if (currentFilter !== 'income') return;
+
+                const selectedSource = select.value;
+                const sourceNames = new Set([
+                    ...categories.income,
+                    ...loadCustomCategories().income,
+                    ...transactions
+                        .filter(transaction => transaction.type === 'income' && transaction.category)
+                        .map(transaction => transaction.category)
+                ]);
+                const sortedSources = Array.from(sourceNames).sort((a, b) => a.localeCompare(b));
+
+                select.innerHTML = '';
+                const allOption = document.createElement('option');
+                allOption.value = '';
+                allOption.textContent = 'All income sources';
+                select.appendChild(allOption);
+
+                sortedSources.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source;
+                    option.textContent = source;
+                    select.appendChild(option);
+                });
+                select.value = selectedSource;
             }
 
             function setFilter(filter, event) {
