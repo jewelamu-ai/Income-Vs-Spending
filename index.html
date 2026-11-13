@@ -5565,6 +5565,9 @@ function reduceLoanAssets(repaymentAmount) {
                 updateTotals();
                 renderAccounts();
                 renderBudgets();
+                if (currentTab === 'analytics') {
+                    updateAnalytics();
+                }
                 alert('Transaction updated successfully!');
             }
 
@@ -9687,11 +9690,30 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                                         ${t.charge && t.charge > 0 ? `<div class="text-xs text-orange-600">+${currency}${formatAmount(t.charge)}</div>` : ''}
                                     </div>
                                 </div>
+                                <div class="flex justify-end mt-2">
+                                    <button type="button" data-edit-category-index="${index}" class="rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200">
+                                        Edit category
+                                    </button>
+                                </div>
                             </div>
                         `;
                     }).join('');
 
+                contentEl.querySelectorAll('[data-edit-category-index]').forEach(button => {
+                    const transaction = categoryTransactions[Number(button.dataset.editCategoryIndex)];
+                    if (transaction) {
+                        button.addEventListener('click', () =>
+                            editTransactionFromCategoryBreakdown(transaction.id)
+                        );
+                    }
+                });
+
                 modal.classList.remove('hidden');
+            }
+
+            function editTransactionFromCategoryBreakdown(transactionId) {
+                closeCategoryDetails();
+                editTransaction(transactionId);
             }
 
             function closeCategoryDetails() {
