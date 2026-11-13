@@ -1122,7 +1122,7 @@ A professional budget tracking application with Firebase integration
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select id="category" onchange="handleExpenseCategoryChange()" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
+                    <select id="category" onchange="handleCategorySelectionChange()" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
                 </div>
 
                 <div id="accountField">
@@ -1188,7 +1188,10 @@ A professional budget tracking application with Firebase integration
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
                     <input type="text" id="description" oninput="suggestExpenseCategory()" placeholder="What was this for?" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <p id="categorySuggestion" class="text-xs text-indigo-600 mt-1" aria-live="polite">For expenses, a category will be suggested as you describe the transaction.</p>
+                    <p id="categorySuggestion" class="text-xs text-indigo-600 mt-1" aria-live="polite">A category can be suggested as you describe an income or expense.</p>
+                    <button id="applyCategorySuggestion" type="button" onclick="applyCategorySuggestion()" class="hidden mt-1 rounded-lg bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200">
+                        Use suggested category
+                    </button>
                 </div>
 
                 <div>
@@ -3295,6 +3298,8 @@ function reduceLoanAssets(repaymentAmount) {
         function setType(type) {
             currentType = type;
             lastAutoSuggestedCategory = '';
+            pendingCategorySuggestion = '';
+            isCategorySelectionManual = false;
             
             // Update button styles
             document.getElementById('typeIncome').className = type === 'income'
@@ -3338,9 +3343,34 @@ function reduceLoanAssets(repaymentAmount) {
         }
 
         let lastAutoSuggestedCategory = '';
+        let pendingCategorySuggestion = '';
+        let editingTransactionOriginalDescription = '';
+        let editingTransactionOriginalCategory = '';
+        let isCategorySelectionManual = false;
 
-        function handleExpenseCategoryChange() {
+        function handleCategorySelectionChange() {
             lastAutoSuggestedCategory = '';
+            isCategorySelectionManual = Boolean(document.getElementById('category').value);
+            setCategorySuggestionMessage(
+                isCategorySelectionManual ? 'Category selected manually.' : 'Add a description to get a category suggestion.',
+                ''
+            );
+        }
+
+        function normalizeCategorySuggestionText(value) {
+            return String(value || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+        }
+
+        function setCategorySuggestionMessage(message, suggestedCategory) {
+            const suggestionMessage = document.getElementById('categorySuggestion');
+            const applyButton = document.getElementById('applyCategorySuggestion');
+            pendingCategorySuggestion = suggestedCategory || '';
+
+            if (suggestionMessage) suggestionMessage.textContent = message;
+            if (applyButton) applyButton.classList.toggle('hidden', !pendingCategorySuggestion);
         }
 
         function suggestExpenseCategory() {
@@ -3348,76 +3378,150 @@ function reduceLoanAssets(repaymentAmount) {
             const categorySelect = document.getElementById('category');
             if (!suggestionMessage || !categorySelect) return;
 
-            if (currentType !== 'expense') {
-                suggestionMessage.textContent = '';
+            if (currentType !== 'expense' && currentType !== 'income') {
+                setCategorySuggestionMessage('', '');
                 return;
             }
 
-            const description = document.getElementById('description').value.trim().toLowerCase();
+            const description = document.getElementById('description').value;
+            const normalizedDescription = normalizeCategorySuggestionText(description);
             const currentCategory = categorySelect.value;
-            if (currentCategory && currentCategory !== lastAutoSuggestedCategory) {
-                suggestionMessage.textContent = 'Category selected manually.';
-                return;
-            }
-
-            if (!description) {
+            if (!normalizedDescription) {
                 if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
-                    categorySelect.value = '';
+                    categorySelect.value = editingTransactionId
+                        ? editingTransactionOriginalCategory
+                        : '';
                 }
                 lastAutoSuggestedCategory = '';
-                suggestionMessage.textContent = 'Add a description to get a category suggestion.';
+                setCategorySuggestionMessage('Add a description to get a category suggestion.', '');
                 return;
             }
 
-            const keywordCategories = [
+            const keywordCategories = currentType === 'expense' ? [
                 { keywords: ['fuel station', 'petrol', 'diesel', 'fuel', 'gas station'], category: 'Transport|Fuel' },
-                { keywords: ['uber', 'bolt', 'taxi', 'ride-hailing'], category: 'Transport|Taxi/Ride' },
+                { keywords: ['uber', 'bolt', 'taxi', 'ride hailing'], category: 'Transport|Taxi/Ride' },
                 { keywords: ['parking'], category: 'Transport|Parking' },
                 { keywords: ['car repair', 'vehicle maintenance', 'mechanic', 'tyre', 'tire'], category: 'Transport|Vehicle Maintenance' },
                 { keywords: ['bus', 'train', 'trotro', 'tro tro'], category: 'Transport|Bus/Train' },
                 { keywords: ['electricity', 'ecg', 'prepaid meter', 'power bill'], category: 'Bills|Electricity' },
                 { keywords: ['water bill', 'water utility'], category: 'Bills|Water' },
                 { keywords: ['internet', 'broadband', 'wifi'], category: 'Bills|Internet' },
-                { keywords: ['phone bill', 'mobile data', 'airtime', 'top-up', 'top up'], category: 'Bills|Phone' },
+                { keywords: ['phone bill', 'mobile data', 'airtime', 'top up'], category: 'Bills|Phone' },
                 { keywords: ['rent'], category: 'Bills|Rent' },
                 { keywords: ['pharmacy', 'medicine', 'medication'], category: 'Health|Pharmacy' },
                 { keywords: ['clinic', 'hospital'], category: 'Health|Medical' },
                 { keywords: ['dentist', 'dental'], category: 'Health|Dental' },
                 { keywords: ['gym'], category: 'Health|Gym' },
                 { keywords: ['grocery', 'groceries', 'supermarket', 'market'], category: 'Food|Groceries' },
-                { keywords: ['restaurant', 'lunch', 'dinner', 'breakfast', 'chop bar', 'fast food'], category: 'Food|Restaurants' },
+                { keywords: ['fast food', 'burger', 'pizza'], category: 'Food|Fast Food' },
+                { keywords: ['restaurant', 'lunch', 'dinner', 'breakfast', 'chop bar'], category: 'Food|Restaurants' },
                 { keywords: ['movie', 'cinema'], category: 'Entertainment|Movies' },
                 { keywords: ['tuition', 'school fees'], category: 'Education|Tuition' },
                 { keywords: ['book', 'textbook'], category: 'Education|Books' },
                 { keywords: ['clothing', 'clothes', 'shoes'], category: 'Shopping|Clothing' },
                 { keywords: ['electronics', 'phone purchase'], category: 'Shopping|Electronics' }
+            ] : [
+                { keywords: ['t bill', 'treasury bill', 'treasury interest'], category: 'T-Bill Interest' },
+                { keywords: ['salary', 'paycheck', 'wages', 'monthly pay'], category: 'Salary' },
+                { keywords: ['freelance', 'contract work', 'consulting fee'], category: 'Freelance' },
+                { keywords: ['business income', 'business sale', 'sales revenue'], category: 'Business' },
+                { keywords: ['investment', 'dividend', 'interest income'], category: 'Investment' },
+                { keywords: ['gift', 'present'], category: 'Gift' },
+                { keywords: ['loan repayment', 'loan repaid'], category: 'Loan Repayment' }
             ];
 
-            const descriptionWords = description.match(/[a-z0-9]+/g) || [];
+            const descriptionWords = normalizedDescription.split(' ');
             const match = keywordCategories.find(rule =>
                 rule.keywords.some(keyword => {
-                    const keywordWords = keyword.match(/[a-z0-9]+/g) || [];
+                    const keywordWords = normalizeCategorySuggestionText(keyword).split(' ');
                     return descriptionWords.some((_, index) =>
                         descriptionWords.slice(index, index + keywordWords.length).join(' ') === keywordWords.join(' ')
                     );
                 })
             );
-            const suggestedCategory = match && Array.from(categorySelect.options)
-                .some(option => option.value === match.category)
-                ? match.category
-                : '';
+
+            const availableCategories = new Set(
+                Array.from(categorySelect.options)
+                    .map(option => option.value)
+                    .filter(Boolean)
+            );
+            const resolveAvailableCategory = category => {
+                if (!category) return '';
+                if (availableCategories.has(category)) return category;
+                const mainCategory = category.split('|')[0];
+                return availableCategories.has(mainCategory) ? mainCategory : '';
+            };
+            const historicalMatch = transactions
+                .filter(transaction =>
+                    transaction.type === currentType &&
+                    transaction.id !== editingTransactionId &&
+                    hasTransactionCategory(transaction) &&
+                    normalizeCategorySuggestionText(transaction.description) === normalizedDescription
+                )
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(transaction => resolveAvailableCategory(transaction.category))
+                .find(Boolean);
+            const suggestedCategory = historicalMatch || resolveAvailableCategory(match && match.category);
+
+            if (
+                editingTransactionId &&
+                normalizedDescription === normalizeCategorySuggestionText(editingTransactionOriginalDescription)
+            ) {
+                const canApplySuggestion = suggestedCategory && suggestedCategory !== currentCategory;
+                const message = canApplySuggestion
+                    ? `Suggested: ${suggestedCategory.replace('|', ' → ')}. Your current category will stay unless you apply the suggestion.`
+                    : currentCategory
+                        ? `Current category: ${currentCategory.replace('|', ' → ')}.`
+                        : 'No match found. Please choose a category.';
+                setCategorySuggestionMessage(message, canApplySuggestion ? suggestedCategory : '');
+                return;
+            }
+
+            if (isCategorySelectionManual) {
+                const canApplySuggestion = suggestedCategory && suggestedCategory !== currentCategory;
+                setCategorySuggestionMessage(
+                    canApplySuggestion
+                        ? `Suggested: ${suggestedCategory.replace('|', ' → ')}. Your selection will stay unless you apply the suggestion.`
+                        : 'Category selected manually.',
+                    canApplySuggestion ? suggestedCategory : ''
+                );
+                return;
+            }
 
             if (suggestedCategory) {
                 categorySelect.value = suggestedCategory;
                 lastAutoSuggestedCategory = suggestedCategory;
-                suggestionMessage.textContent = `Suggested: ${suggestedCategory.replace('|', ' → ')}. You can change it.`;
+                setCategorySuggestionMessage(
+                    `Suggested: ${suggestedCategory.replace('|', ' → ')}. You can change it.`,
+                    ''
+                );
             } else {
                 if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
-                    categorySelect.value = '';
+                    categorySelect.value = editingTransactionId
+                        ? editingTransactionOriginalCategory
+                        : '';
                 }
                 lastAutoSuggestedCategory = '';
-                suggestionMessage.textContent = 'No match found. Please choose a category.';
+                setCategorySuggestionMessage(
+                    currentCategory
+                        ? 'No match found. Your current category was kept.'
+                        : 'No match found. Please choose a category.',
+                    ''
+                );
             }
+        }
+
+        function applyCategorySuggestion() {
+            const categorySelect = document.getElementById('category');
+            if (!categorySelect || !pendingCategorySuggestion) return;
+
+            categorySelect.value = pendingCategorySuggestion;
+            lastAutoSuggestedCategory = pendingCategorySuggestion;
+            isCategorySelectionManual = false;
+            setCategorySuggestionMessage(
+                `Suggested: ${pendingCategorySuggestion.replace('|', ' → ')}. You can change it.`,
+                ''
+            );
         }
 
         function updateCategories() {
@@ -4567,6 +4671,11 @@ function reduceLoanAssets(repaymentAmount) {
 
             function openTransactionModal() { 
                 editingTransactionId = null;
+                editingTransactionOriginalDescription = '';
+                editingTransactionOriginalCategory = '';
+                lastAutoSuggestedCategory = '';
+                pendingCategorySuggestion = '';
+                isCategorySelectionManual = false;
                 const modal = document.getElementById('transactionModal');
                 const h2 = modal.querySelector('h2');
                 const btn = modal.querySelector('button[onclick*="saveTransaction"]');
@@ -5351,6 +5460,12 @@ function reduceLoanAssets(repaymentAmount) {
                 
                 // Set editing mode
                 editingTransactionId = transactionId;
+                editingTransactionOriginalDescription = transaction.description || '';
+                editingTransactionOriginalCategory = transaction.category || '';
+                lastAutoSuggestedCategory = '';
+                pendingCategorySuggestion = '';
+                isCategorySelectionManual = false;
+                document.getElementById('description').value = editingTransactionOriginalDescription;
                 
                 // Set transaction type
                 setType(transaction.type);
@@ -5360,7 +5475,6 @@ function reduceLoanAssets(repaymentAmount) {
                     ? Number(transaction.amount || 0) - Number(transaction.charge || 0)
                     : transaction.amount;
                 document.getElementById('date').value = transaction.date;
-                document.getElementById('description').value = transaction.description || '';
                 document.getElementById('transactionCharge').value = transaction.charge || 0;
                 
                 // Pre-fill based on type
@@ -5376,6 +5490,7 @@ function reduceLoanAssets(repaymentAmount) {
                     document.getElementById('category').value = transaction.category;
                     document.getElementById('accountSelect').value = transaction.account;
                 }
+                suggestExpenseCategory();
                 
                 // Change button text and action
                 const submitBtn = document.querySelector('#transactionModal button[onclick*="addTransaction"]');
