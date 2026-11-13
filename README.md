@@ -85,6 +85,30 @@ A professional, cloud-synced budget tracking application with comprehensive fina
 2. Enable Authentication and Firestore Database
 3. Copy your Firebase config and replace the placeholder in `index.html`
 
+### AI Budget Assistant Setup
+
+The Analytics tab includes an AI assistant for spending questions and proposed income/expense category changes. It sends at most the 300 most recent income and expense transactions (dates, amounts, descriptions, and categories) to Gemini. It does not send account identifiers. The assistant cannot add, delete, or change transaction amounts, and category changes require your confirmation.
+
+The Gemini API key is kept in Firebase Secret Manager and is never placed in the browser:
+
+1. Enable billing for the Firebase project and install the Firebase CLI.
+2. From the repository root, install the function dependencies:
+   ```bash
+   npm --prefix functions install
+   ```
+3. Sign in to Firebase CLI and select the project in `.firebaserc`.
+4. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey), then store it as a Firebase secret:
+   ```bash
+   firebase functions:secrets:set GEMINI_API_KEY
+   ```
+5. Deploy the callable function:
+   ```bash
+   firebase deploy --only functions:budgetAssistant
+   ```
+6. Deploy the updated static app using the existing GitHub Pages workflow.
+
+The callable function requires Firebase Authentication, limits requests to five per user per minute and 50 per day, and only returns validated category suggestions. AI answers cover at most the latest 300 income and expense records; older records are excluded when a user's history is larger.
+
 ## 📊 Usage
 
 ### Getting Started

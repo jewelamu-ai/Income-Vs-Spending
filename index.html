@@ -22,6 +22,7 @@ A professional budget tracking application with Firebase integration
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -787,6 +788,25 @@ A professional budget tracking application with Firebase integration
                         </div>
                     </div>
                 </div>
+                <section class="bg-gradient-to-r from-violet-50 to-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+                    <h2 class="text-lg font-semibold text-indigo-950">AI Budget Assistant</h2>
+                    <p class="text-sm text-indigo-900 mt-1 mb-3">
+                        Ask questions about your spending or request category changes. The latest 300 income and expense records may be sent to Gemini; proposed changes are never applied without your confirmation.
+                    </p>
+                    <label for="budgetAssistantPrompt" class="sr-only">Ask the budget assistant</label>
+                    <textarea id="budgetAssistantPrompt" rows="3" maxlength="800" placeholder="For example: Which category did I spend the most on this month? Or: categorize fuel station purchases as Transport|Fuel." class="w-full rounded-lg border border-indigo-200 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"></textarea>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <button id="budgetAssistantAskButton" type="button" onclick="askBudgetAssistant()" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            Ask AI
+                        </button>
+                        <button id="budgetAssistantApplyButton" type="button" onclick="applyBudgetAssistantCategoryChanges()" class="hidden rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">
+                            Apply category changes
+                        </button>
+                    </div>
+                    <p id="budgetAssistantStatus" class="text-sm mt-3" role="status" aria-live="polite"></p>
+                    <div id="budgetAssistantAnswer" class="hidden whitespace-pre-wrap rounded-lg bg-white p-3 mt-3 text-sm text-gray-800"></div>
+                    <div id="budgetAssistantProposals" class="hidden space-y-2 mt-3"></div>
+                </section>
                 <div class="bg-white rounded-xl shadow-md p-4">
                     <div id="uncategorizedAnalyticsNotice" class="hidden mb-4"></div>
                     <canvas id="analyticsChart"></canvas>
@@ -1919,6 +1939,8 @@ A professional budget tracking application with Firebase integration
         let analyticsChart = null;
         let editingTransactionId = null; // Track if editing a transaction
         let selectedTransactions = new Set(); // Track selected transactions for bulk delete
+        let pendingBudgetAssistantUpdates = [];
+        let pendingBudgetAssistantCategories = { income: [], expense: [] };
         let undoDeleteTimer = null;
         let undoDeleteNotification = null;
         
@@ -2477,7 +2499,7 @@ A professional budget tracking application with Firebase integration
                     profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories, hiddenDefaultCategories,
                     lastUpdated: currentTimestamp
                 }));
-                return;
+                return false;
             }
             
             setSyncStatus('Syncing...');
@@ -2511,6 +2533,7 @@ A professional budget tracking application with Firebase integration
                 console.log('Saved to Firebase successfully');
                 
                 setSyncStatus('Synced');
+                return true;
             } catch (error) {
                 console.error('Save error:', error);
                 setSyncStatus('Sync failed - saved locally', true);
@@ -2519,6 +2542,7 @@ A professional budget tracking application with Firebase integration
                     profiles, transactions, budgets, accounts, recurring, reminders, assets, liabilities, currency, currentProfileId, deletedTransactions, fuelEntries, customCategories, hiddenDefaultCategories,
                     lastUpdated: currentTimestamp
                 }));
+                return false;
             }
         }
 
@@ -8688,6 +8712,217 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 updateFinancialPosition();
 
                 alert(`Payment of ${currency}${paymentAmount.toFixed(2)} recorded successfully!`);
+            }
+
+            function setBudgetAssistantStatus(message, isError = false) {
+                const status = document.getElementById('budgetAssistantStatus');
+                if (!status) return;
+                status.textContent = message;
+                status.className = `text-sm mt-3 ${isError ? 'text-red-700' : 'text-indigo-900'}`;
+            }
+
+            function clearBudgetAssistantProposals() {
+                pendingBudgetAssistantUpdates = [];
+                pendingBudgetAssistantCategories = { income: [], expense: [] };
+                const proposals = document.getElementById('budgetAssistantProposals');
+                const applyButton = document.getElementById('budgetAssistantApplyButton');
+                if (proposals) {
+                    proposals.replaceChildren();
+                    proposals.classList.add('hidden');
+                }
+                if (applyButton) applyButton.classList.add('hidden');
+            }
+
+            async function askBudgetAssistant() {
+                const prompt = document.getElementById('budgetAssistantPrompt').value.trim();
+                const askButton = document.getElementById('budgetAssistantAskButton');
+                const answer = document.getElementById('budgetAssistantAnswer');
+
+                if (!prompt) {
+                    setBudgetAssistantStatus('Enter a question or instruction first.', true);
+                    return;
+                }
+                if (!currentUser || typeof firebase.functions !== 'function') {
+                    setBudgetAssistantStatus('Sign in and connect to Firebase before using the AI assistant.', true);
+                    return;
+                }
+
+                clearBudgetAssistantProposals();
+                answer.textContent = '';
+                answer.classList.add('hidden');
+                askButton.disabled = true;
+                setBudgetAssistantStatus('Reviewing your recent transactions…');
+
+                try {
+                    const callAssistant = firebase.functions().httpsCallable('budgetAssistant');
+                    const result = await callAssistant({ prompt });
+                    const data = result.data || {};
+                    if (typeof data.answer !== 'string') {
+                        throw new Error('The AI assistant returned an invalid response.');
+                    }
+
+                    answer.textContent = data.answer;
+                    answer.classList.remove('hidden');
+
+                    const analyzedCount = Number(data.analyzedTransactionCount || 0);
+                    const totalCount = Number(data.totalTransactionCount || 0);
+                    const scopeMessage = data.truncated
+                        ? `Analyzed the latest ${analyzedCount} of ${totalCount} income/expense records; older transactions were excluded.`
+                        : `Analyzed ${analyzedCount} income/expense record${analyzedCount === 1 ? '' : 's'}.`;
+                    const proposalsRendered = renderBudgetAssistantCategoryUpdates(
+                        data.categoryUpdates,
+                        data.allowedCategories
+                    );
+                    if (proposalsRendered) {
+                        const proposalCount = pendingBudgetAssistantUpdates.length;
+                        setBudgetAssistantStatus(
+                            `${scopeMessage}${proposalCount > 0
+                                ? ` ${proposalCount} proposed category change${proposalCount === 1 ? '' : 's'}; review them before applying.`
+                                : ''}`
+                        );
+                    }
+                } catch (error) {
+                    console.error('AI budget assistant request failed:', error);
+                    setBudgetAssistantStatus(
+                        error.message || 'The AI request failed. Check your connection and Firebase setup.',
+                        true
+                    );
+                } finally {
+                    askButton.disabled = false;
+                }
+            }
+
+            function renderBudgetAssistantCategoryUpdates(updates, allowedCategories) {
+                const proposals = document.getElementById('budgetAssistantProposals');
+                const applyButton = document.getElementById('budgetAssistantApplyButton');
+                proposals.replaceChildren();
+
+                if (!Array.isArray(updates) || updates.length === 0) return true;
+
+                const proposedUpdates = [];
+                for (const update of updates) {
+                    const transaction = transactions.find(item =>
+                        String(item.id) === String(update.transactionId)
+                    );
+                    const typeCategories = allowedCategories?.[update.type];
+                    if (
+                        !transaction ||
+                        transaction.type !== update.type ||
+                        String(transaction.category || '') !== String(update.fromCategory || '') ||
+                        !Array.isArray(typeCategories) ||
+                        !typeCategories.includes(update.category)
+                    ) {
+                        setBudgetAssistantStatus(
+                            'Some suggestions no longer match your current transactions. Ask again to get an up-to-date review.',
+                            true
+                        );
+                        return false;
+                    }
+                    proposedUpdates.push(update);
+                }
+
+                pendingBudgetAssistantUpdates = proposedUpdates;
+                pendingBudgetAssistantCategories = allowedCategories;
+
+                proposedUpdates.forEach(update => {
+                    const transaction = transactions.find(item =>
+                        String(item.id) === String(update.transactionId)
+                    );
+                    const item = document.createElement('div');
+                    item.className = 'rounded-lg border border-indigo-100 bg-white p-3';
+
+                    const description = document.createElement('p');
+                    description.className = 'font-medium text-gray-900';
+                    description.textContent = transaction.description || 'Transaction';
+
+                    const categoryChange = document.createElement('p');
+                    categoryChange.className = 'text-sm text-indigo-800';
+                    categoryChange.textContent =
+                        `${transaction.category || 'Uncategorized'} → ${update.category}`;
+
+                    const details = document.createElement('p');
+                    details.className = 'mt-1 text-xs text-gray-600';
+                    details.textContent =
+                        `${transaction.type} · ${transaction.date || 'No date'} · ` +
+                        `${currency}${formatAmount(Math.abs(Number(transaction.amount) || 0))}`;
+
+                    item.append(description, categoryChange, details);
+                    proposals.appendChild(item);
+                });
+
+                proposals.classList.remove('hidden');
+                applyButton.textContent = `Review & apply ${proposedUpdates.length} category change${proposedUpdates.length === 1 ? '' : 's'}`;
+                applyButton.classList.remove('hidden');
+                return true;
+            }
+
+            async function applyBudgetAssistantCategoryChanges() {
+                if (!currentUser) {
+                    setBudgetAssistantStatus('Sign in again before applying category changes.', true);
+                    return;
+                }
+                if (pendingBudgetAssistantUpdates.length === 0) return;
+
+                const transactionsToUpdate = pendingBudgetAssistantUpdates.map(update => {
+                    const transaction = transactions.find(item =>
+                        String(item.id) === String(update.transactionId)
+                    );
+                    const allowed = pendingBudgetAssistantCategories[update.type] || [];
+                    if (
+                        !transaction ||
+                        transaction.type !== update.type ||
+                        String(transaction.category || '') !== String(update.fromCategory || '') ||
+                        !allowed.includes(update.category)
+                    ) {
+                        return null;
+                    }
+                    return { transaction, category: update.category };
+                });
+
+                if (transactionsToUpdate.some(item => item === null)) {
+                    setBudgetAssistantStatus(
+                        'No changes were applied because one or more transactions changed. Ask again for fresh suggestions.',
+                        true
+                    );
+                    return;
+                }
+
+                if (!confirm(
+                    `Apply ${transactionsToUpdate.length} category change${transactionsToUpdate.length === 1 ? '' : 's'}? ` +
+                    'Only categories will change; amounts, dates and accounts will stay the same.'
+                )) {
+                    return;
+                }
+
+                const applyButton = document.getElementById('budgetAssistantApplyButton');
+                applyButton.disabled = true;
+                try {
+                    transactionsToUpdate.forEach(item => {
+                        item.transaction.category = item.category;
+                    });
+                    recalculateAccountBalances();
+                    renderTransactions();
+                    renderBudgets();
+                    updateTotals();
+                    if (currentTab === 'analytics') updateAnalytics();
+
+                    const synced = await saveToFirebase();
+                    clearBudgetAssistantProposals();
+                    setBudgetAssistantStatus(
+                        synced
+                            ? 'Category changes applied and synced to your account.'
+                            : 'Category changes were saved on this device, but Firebase sync failed. Check the sync status before relying on another device.',
+                        !synced
+                    );
+                } catch (error) {
+                    console.error('Could not apply AI category suggestions:', error);
+                    setBudgetAssistantStatus(
+                        error.message || 'Could not apply the category suggestions.',
+                        true
+                    );
+                } finally {
+                    applyButton.disabled = false;
+                }
             }
 
             function renderAnalytics() {
