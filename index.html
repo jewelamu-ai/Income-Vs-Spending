@@ -1188,10 +1188,8 @@ A professional budget tracking application with Firebase integration
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
                     <input type="text" id="description" oninput="suggestExpenseCategory()" placeholder="What was this for?" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <p id="categorySuggestion" class="text-xs text-indigo-600 mt-1" aria-live="polite">A category can be suggested as you describe an income or expense.</p>
-                    <button id="applyCategorySuggestion" type="button" onclick="applyCategorySuggestion()" class="hidden mt-1 rounded-lg bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200">
-                        Use suggested category
-                    </button>
+                    <p id="categorySuggestion" class="text-xs text-gray-600 mt-1" aria-live="polite">Start typing to see matching categories.</p>
+                    <div id="categorySuggestionList" class="hidden mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm" role="listbox" aria-label="Category suggestions"></div>
                 </div>
 
                 <div>
@@ -3297,9 +3295,6 @@ function reduceLoanAssets(repaymentAmount) {
         // ============================================
         function setType(type) {
             currentType = type;
-            lastAutoSuggestedCategory = '';
-            pendingCategorySuggestion = '';
-            isCategorySelectionManual = false;
             
             // Update button styles
             document.getElementById('typeIncome').className = type === 'income'
@@ -3342,18 +3337,15 @@ function reduceLoanAssets(repaymentAmount) {
             suggestExpenseCategory();
         }
 
-        let lastAutoSuggestedCategory = '';
-        let pendingCategorySuggestion = '';
-        let editingTransactionOriginalDescription = '';
-        let editingTransactionOriginalCategory = '';
-        let isCategorySelectionManual = false;
-
         function handleCategorySelectionChange() {
-            lastAutoSuggestedCategory = '';
-            isCategorySelectionManual = Boolean(document.getElementById('category').value);
+            const categorySelect = document.getElementById('category');
+            const category = categorySelect ? categorySelect.value : '';
+            const label = category
+                ? category.split('|').join(' → ')
+                : 'Start typing to see matching categories.';
             setCategorySuggestionMessage(
-                isCategorySelectionManual ? 'Category selected manually.' : 'Add a description to get a category suggestion.',
-                ''
+                category ? `Selected: ${label}.` : label,
+                []
             );
         }
 
@@ -3364,36 +3356,40 @@ function reduceLoanAssets(repaymentAmount) {
                 .trim();
         }
 
-        function setCategorySuggestionMessage(message, suggestedCategory) {
+        function setCategorySuggestionMessage(message, suggestions) {
             const suggestionMessage = document.getElementById('categorySuggestion');
-            const applyButton = document.getElementById('applyCategorySuggestion');
-            pendingCategorySuggestion = suggestedCategory || '';
+            const suggestionList = document.getElementById('categorySuggestionList');
+            if (!suggestionMessage || !suggestionList) return;
 
-            if (suggestionMessage) suggestionMessage.textContent = message;
-            if (applyButton) applyButton.classList.toggle('hidden', !pendingCategorySuggestion);
+            suggestionMessage.textContent = message;
+            suggestionList.replaceChildren();
+
+            suggestions.forEach(suggestion => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.setAttribute('role', 'option');
+                button.className = 'block w-full border-b border-gray-100 px-3 py-2 text-left text-sm text-gray-700 last:border-b-0 hover:bg-indigo-50 hover:text-indigo-700';
+                button.textContent = suggestion.label;
+                button.addEventListener('click', () => selectCategorySuggestion(suggestion.value));
+                suggestionList.appendChild(button);
+            });
+            suggestionList.classList.toggle('hidden', suggestions.length === 0);
         }
 
         function suggestExpenseCategory() {
-            const suggestionMessage = document.getElementById('categorySuggestion');
             const categorySelect = document.getElementById('category');
-            if (!suggestionMessage || !categorySelect) return;
+            if (!categorySelect) return;
 
             if (currentType !== 'expense' && currentType !== 'income') {
-                setCategorySuggestionMessage('', '');
+                setCategorySuggestionMessage('', []);
                 return;
             }
 
-            const description = document.getElementById('description').value;
+            const descriptionInput = document.getElementById('description');
+            const description = descriptionInput ? descriptionInput.value : '';
             const normalizedDescription = normalizeCategorySuggestionText(description);
-            const currentCategory = categorySelect.value;
             if (!normalizedDescription) {
-                if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
-                    categorySelect.value = editingTransactionId
-                        ? editingTransactionOriginalCategory
-                        : '';
-                }
-                lastAutoSuggestedCategory = '';
-                setCategorySuggestionMessage('Add a description to get a category suggestion.', '');
+                setCategorySuggestionMessage('Start typing to see matching categories.', []);
                 return;
             }
 
@@ -3430,16 +3426,6 @@ function reduceLoanAssets(repaymentAmount) {
                 { keywords: ['loan repayment', 'loan repaid'], category: 'Loan Repayment' }
             ];
 
-            const descriptionWords = normalizedDescription.split(' ');
-            const match = keywordCategories.find(rule =>
-                rule.keywords.some(keyword => {
-                    const keywordWords = normalizeCategorySuggestionText(keyword).split(' ');
-                    return descriptionWords.some((_, index) =>
-                        descriptionWords.slice(index, index + keywordWords.length).join(' ') === keywordWords.join(' ')
-                    );
-                })
-            );
-
             const availableCategories = new Set(
                 Array.from(categorySelect.options)
                     .map(option => option.value)
@@ -3451,7 +3437,24 @@ function reduceLoanAssets(repaymentAmount) {
                 const mainCategory = category.split('|')[0];
                 return availableCategories.has(mainCategory) ? mainCategory : '';
             };
-            const historicalMatch = transactions
+            const candidates = new Map();
+            const addCandidate = (category, score) => {
+                const value = resolveAvailableCategory(category);
+                if (!value) return;
+                const option = Array.from(categorySelect.options).find(item => item.value === value);
+                if (!option) return;
+
+                const existing = candidates.get(value);
+                if (!existing || score > existing.score) {
+                    candidates.set(value, {
+                        value,
+                        label: value.split('|').join(' → '),
+                        score
+                    });
+                }
+            };
+
+            transactions
                 .filter(transaction =>
                     transaction.type === currentType &&
                     transaction.id !== editingTransactionId &&
@@ -3459,69 +3462,49 @@ function reduceLoanAssets(repaymentAmount) {
                     normalizeCategorySuggestionText(transaction.description) === normalizedDescription
                 )
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .map(transaction => resolveAvailableCategory(transaction.category))
-                .find(Boolean);
-            const suggestedCategory = historicalMatch || resolveAvailableCategory(match && match.category);
+                .forEach(transaction => addCandidate(transaction.category, 300));
 
-            if (
-                editingTransactionId &&
-                normalizedDescription === normalizeCategorySuggestionText(editingTransactionOriginalDescription)
-            ) {
-                const canApplySuggestion = suggestedCategory && suggestedCategory !== currentCategory;
-                const message = canApplySuggestion
-                    ? `Suggested: ${suggestedCategory.replace('|', ' → ')}. Your current category will stay unless you apply the suggestion.`
-                    : currentCategory
-                        ? `Current category: ${currentCategory.replace('|', ' → ')}.`
-                        : 'No match found. Please choose a category.';
-                setCategorySuggestionMessage(message, canApplySuggestion ? suggestedCategory : '');
-                return;
-            }
+            const descriptionWords = normalizedDescription.split(' ');
+            keywordCategories.forEach(rule => {
+                const matchesDescription = rule.keywords.some(keyword => {
+                    const keywordWords = normalizeCategorySuggestionText(keyword).split(' ');
+                    return descriptionWords.some((_, index) =>
+                        descriptionWords.slice(index, index + keywordWords.length).join(' ') === keywordWords.join(' ')
+                    );
+                });
+                if (matchesDescription) addCandidate(rule.category, 200);
+            });
 
-            if (isCategorySelectionManual) {
-                const canApplySuggestion = suggestedCategory && suggestedCategory !== currentCategory;
-                setCategorySuggestionMessage(
-                    canApplySuggestion
-                        ? `Suggested: ${suggestedCategory.replace('|', ' → ')}. Your selection will stay unless you apply the suggestion.`
-                        : 'Category selected manually.',
-                    canApplySuggestion ? suggestedCategory : ''
-                );
-                return;
-            }
+            Array.from(categorySelect.options)
+                .filter(option => option.value)
+                .forEach(option => {
+                    const categoryWords = normalizeCategorySuggestionText(option.value.replace(/\|/g, ' ')).split(' ');
+                    const hasWordMatch = categoryWords.some(categoryWord =>
+                        descriptionWords.some(descriptionWord =>
+                            categoryWord.length >= 2 &&
+                            descriptionWord.length >= 2 &&
+                            (categoryWord.startsWith(descriptionWord) || descriptionWord.startsWith(categoryWord))
+                        )
+                    );
+                    if (hasWordMatch) addCandidate(option.value, 100);
+                });
 
-            if (suggestedCategory) {
-                categorySelect.value = suggestedCategory;
-                lastAutoSuggestedCategory = suggestedCategory;
-                setCategorySuggestionMessage(
-                    `Suggested: ${suggestedCategory.replace('|', ' → ')}. You can change it.`,
-                    ''
-                );
-            } else {
-                if (lastAutoSuggestedCategory && currentCategory === lastAutoSuggestedCategory) {
-                    categorySelect.value = editingTransactionId
-                        ? editingTransactionOriginalCategory
-                        : '';
-                }
-                lastAutoSuggestedCategory = '';
-                setCategorySuggestionMessage(
-                    currentCategory
-                        ? 'No match found. Your current category was kept.'
-                        : 'No match found. Please choose a category.',
-                    ''
-                );
-            }
+            const suggestions = Array.from(candidates.values())
+                .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+            setCategorySuggestionMessage(
+                suggestions.length
+                    ? `Choose a matching category (${suggestions.length}):`
+                    : 'No matching categories yet. Keep typing or choose a category from the list.',
+                suggestions
+            );
         }
 
-        function applyCategorySuggestion() {
+        function selectCategorySuggestion(category) {
             const categorySelect = document.getElementById('category');
-            if (!categorySelect || !pendingCategorySuggestion) return;
+            if (!categorySelect || !Array.from(categorySelect.options).some(option => option.value === category)) return;
 
-            categorySelect.value = pendingCategorySuggestion;
-            lastAutoSuggestedCategory = pendingCategorySuggestion;
-            isCategorySelectionManual = false;
-            setCategorySuggestionMessage(
-                `Suggested: ${pendingCategorySuggestion.replace('|', ' → ')}. You can change it.`,
-                ''
-            );
+            categorySelect.value = category;
+            setCategorySuggestionMessage(`Selected: ${category.split('|').join(' → ')}.`, []);
         }
 
         function updateCategories() {
@@ -4671,11 +4654,6 @@ function reduceLoanAssets(repaymentAmount) {
 
             function openTransactionModal() { 
                 editingTransactionId = null;
-                editingTransactionOriginalDescription = '';
-                editingTransactionOriginalCategory = '';
-                lastAutoSuggestedCategory = '';
-                pendingCategorySuggestion = '';
-                isCategorySelectionManual = false;
                 const modal = document.getElementById('transactionModal');
                 const h2 = modal.querySelector('h2');
                 const btn = modal.querySelector('button[onclick*="saveTransaction"]');
@@ -5460,12 +5438,7 @@ function reduceLoanAssets(repaymentAmount) {
                 
                 // Set editing mode
                 editingTransactionId = transactionId;
-                editingTransactionOriginalDescription = transaction.description || '';
-                editingTransactionOriginalCategory = transaction.category || '';
-                lastAutoSuggestedCategory = '';
-                pendingCategorySuggestion = '';
-                isCategorySelectionManual = false;
-                document.getElementById('description').value = editingTransactionOriginalDescription;
+                document.getElementById('description').value = transaction.description || '';
                 
                 // Set transaction type
                 setType(transaction.type);
