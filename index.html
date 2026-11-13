@@ -758,7 +758,8 @@ A professional budget tracking application with Firebase integration
                 <div class="mb-4 space-y-3">
                     <div class="flex flex-wrap gap-3 items-center">
                         <select id="analyticsType" class="px-4 py-2 border rounded-lg" onchange="updateAnalytics()">
-                            <option value="category">By Category</option>
+                            <option value="category">Expense Categories</option>
+                            <option value="incomeCategories">Income Categories</option>
                             <option value="incomeSources">Income Sources</option>
                             <option value="tbillInterest">T-Bill Interest</option>
                             <option value="bankCharges">Bank Charges</option>
@@ -807,6 +808,12 @@ A professional budget tracking application with Firebase integration
                     <div id="budgetAssistantAnswer" class="hidden whitespace-pre-wrap rounded-lg bg-white p-3 mt-3 text-sm text-gray-800"></div>
                     <div id="budgetAssistantProposals" class="hidden space-y-2 mt-3"></div>
                 </section>
+                <div id="analyticsBreakdownNavigation" class="hidden flex items-center gap-3 mb-3">
+                    <button type="button" onclick="goBackAnalyticsBreakdown()" class="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                        ← Back
+                    </button>
+                    <p id="analyticsBreakdownBreadcrumb" class="text-sm font-medium text-gray-700"></p>
+                </div>
                 <div class="bg-white rounded-xl shadow-md p-4">
                     <div id="uncategorizedAnalyticsNotice" class="hidden mb-4"></div>
                     <canvas id="analyticsChart"></canvas>
@@ -1937,6 +1944,11 @@ A professional budget tracking application with Firebase integration
         let currentAccount = 'default';
         let currency = 'GHS';
         let analyticsChart = null;
+        let analyticsCategoryDrillType = null;
+        let analyticsCategoryDrillDateFrom = '';
+        let analyticsCategoryDrillDateTo = '';
+        let analyticsCategoryDrillPath = [];
+        let analyticsBreakdownRows = [];
         let editingTransactionId = null; // Track if editing a transaction
         let selectedTransactions = new Set(); // Track selected transactions for bulk delete
         let pendingBudgetAssistantUpdates = [];
@@ -9115,12 +9127,192 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                 }
             }
 
+            function getAnalyticsCategoryBreakdownRows(filteredTransactions, transactionType, path) {
+                const childCategories = new Map();
+                let directAmount = 0;
+                let directCount = 0;
+
+                filteredTransactions.forEach(transaction => {
+                    if (transaction.type !== transactionType || !hasTransactionCategory(transaction)) return;
+
+                    const segments = transaction.category.split('|').map(segment => segment.trim());
+                    if (path.some((segment, index) => segments[index] !== segment)) return;
+
+                    const amount = Math.abs(Number(transaction.amount) || 0);
+                    if (segments.length === path.length) {
+                        directAmount += amount;
+                        directCount += 1;
+                        return;
+                    }
+
+                    const label = segments[path.length];
+                    let row = childCategories.get(label);
+                    if (!row) {
+                        row = {
+                            label,
+                            category: path.concat(label).join('|'),
+                            amount: 0,
+                            hasChildren: false
+                        };
+                        childCategories.set(label, row);
+                    }
+                    row.amount += amount;
+                    row.hasChildren = row.hasChildren || segments.length > path.length + 1;
+                });
+
+                const rows = Array.from(childCategories.values());
+                if (directCount > 0) {
+                    rows.push({
+                        label: 'No subcategory',
+                        category: path.join('|'),
+                        amount: directAmount,
+                        hasChildren: false
+                    });
+                }
+
+                return rows.sort((a, b) => b.amount - a.amount);
+            }
+
+            function renderAnalyticsCategoryNavigation(type) {
+                const navigation = document.getElementById('analyticsBreakdownNavigation');
+                const breadcrumb = document.getElementById('analyticsBreakdownBreadcrumb');
+                if (!navigation || !breadcrumb) return;
+
+                navigation.classList.toggle('hidden', analyticsCategoryDrillPath.length === 0);
+                const rootLabel = type === 'category' ? 'Expenses' : 'Income';
+                breadcrumb.textContent = `${rootLabel} › ${analyticsCategoryDrillPath.join(' › ')}`;
+            }
+
+            function renderAnalyticsCategorySummary(summaryEl, type, rows, dateRangeText) {
+                const isExpense = type === 'category';
+                const total = rows.reduce((sum, row) => sum + row.amount, 0);
+                const heading = document.createElement('h3');
+                heading.className = 'text-lg font-semibold mb-1';
+                heading.textContent = `${isExpense ? 'Expense' : 'Income'} Breakdown` +
+                    (analyticsCategoryDrillPath.length
+                        ? ` — ${analyticsCategoryDrillPath.join(' › ')}`
+                        : '') +
+                    dateRangeText;
+
+                const hint = document.createElement('p');
+                hint.className = 'text-sm text-gray-600 mb-3';
+                hint.textContent = analyticsCategoryDrillPath.length
+                    ? 'Select a subcategory to keep drilling down, or select a leaf to view its transactions.'
+                    : `Showing ${isExpense ? 'spending' : 'income'} by major category. Select a category to explore its breakdown.`;
+
+                const totalCard = document.createElement('div');
+                totalCard.className = `mb-3 rounded-lg border p-3 ${isExpense ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`;
+
+                const totalLabel = document.createElement('p');
+                totalLabel.className = 'text-sm text-gray-600';
+                totalLabel.textContent = isExpense ? 'Total Spending' : 'Total Income';
+
+                const totalValue = document.createElement('p');
+                totalValue.className = `text-2xl font-bold ${isExpense ? 'text-red-600' : 'text-green-600'}`;
+                totalValue.textContent = `${currency}${formatAmount(total)}`;
+                totalCard.append(totalLabel, totalValue);
+
+                const breakdownList = document.createElement('div');
+                if (rows.length === 0) {
+                    const emptyState = document.createElement('p');
+                    emptyState.className = 'py-6 text-center text-sm text-gray-500';
+                    emptyState.textContent = 'No categorized transactions found for this view.';
+                    breakdownList.appendChild(emptyState);
+                } else {
+                    rows.forEach((row, index) => {
+                        const percentage = total > 0 ? (row.amount / total) * 100 : 0;
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'w-full rounded-lg border-b border-gray-100 p-3 text-left transition-colors hover:bg-gray-50';
+                        button.addEventListener('click', () => selectAnalyticsBreakdownItem(index));
+
+                        const line = document.createElement('div');
+                        line.className = 'mb-1 flex items-center justify-between gap-3';
+                        const label = document.createElement('span');
+                        label.className = 'font-medium text-gray-700';
+                        label.textContent = row.label;
+                        const amount = document.createElement('span');
+                        amount.className = 'font-semibold text-gray-900';
+                        amount.textContent = `${currency}${formatAmount(row.amount)}`;
+                        line.append(label, amount);
+
+                        const progressLine = document.createElement('div');
+                        progressLine.className = 'flex items-center gap-2';
+                        const progressTrack = document.createElement('div');
+                        progressTrack.className = 'h-2 flex-1 rounded bg-gray-200';
+                        const progress = document.createElement('div');
+                        progress.className = `h-2 rounded ${isExpense ? 'bg-indigo-600' : 'bg-green-600'}`;
+                        progress.style.width = `${percentage}%`;
+                        progressTrack.appendChild(progress);
+                        const percentageLabel = document.createElement('span');
+                        percentageLabel.className = 'w-12 text-right text-xs text-gray-500';
+                        percentageLabel.textContent = `${percentage.toFixed(1)}%`;
+                        progressLine.append(progressTrack, percentageLabel);
+
+                        const action = document.createElement('p');
+                        action.className = `mt-1 text-xs ${isExpense ? 'text-indigo-600' : 'text-green-700'}`;
+                        action.textContent = row.hasChildren
+                            ? 'Select to see subcategories'
+                            : 'Select to view transactions';
+
+                        button.append(line, progressLine, action);
+                        breakdownList.appendChild(button);
+                    });
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'rounded-xl bg-white p-4 shadow-md';
+                wrapper.append(heading, hint, totalCard, breakdownList);
+                summaryEl.replaceChildren(wrapper);
+            }
+
+            function selectAnalyticsBreakdownItem(index) {
+                const row = analyticsBreakdownRows[index];
+                if (!row) return;
+
+                if (row.hasChildren) {
+                    analyticsCategoryDrillPath.push(row.label);
+                    updateAnalytics();
+                    return;
+                }
+
+                const dateFrom = document.getElementById('analyticsDateFrom').value;
+                const dateTo = document.getElementById('analyticsDateTo').value;
+                if (analyticsCategoryDrillType === 'category') {
+                    showCategoryDetails(row.category, dateFrom, dateTo);
+                } else if (analyticsCategoryDrillType === 'incomeCategories') {
+                    showIncomeCategoryDetails(row.category, dateFrom, dateTo);
+                }
+            }
+
+            function goBackAnalyticsBreakdown() {
+                if (analyticsCategoryDrillPath.length === 0) return;
+                analyticsCategoryDrillPath.pop();
+                updateAnalytics();
+            }
+
             function updateAnalytics() {
                 const type = document.getElementById('analyticsType').value;
                 const ctx = document.getElementById('analyticsChart').getContext('2d');
                 const summaryEl = document.getElementById('analyticsSummary');
                 const dateFrom = document.getElementById('analyticsDateFrom').value;
                 const dateTo = document.getElementById('analyticsDateTo').value;
+                const categoryAnalyticsType = type === 'category' || type === 'incomeCategories'
+                    ? type
+                    : null;
+
+                if (
+                    analyticsCategoryDrillType !== categoryAnalyticsType ||
+                    analyticsCategoryDrillDateFrom !== dateFrom ||
+                    analyticsCategoryDrillDateTo !== dateTo
+                ) {
+                    analyticsCategoryDrillPath = [];
+                }
+                analyticsCategoryDrillType = categoryAnalyticsType;
+                analyticsCategoryDrillDateFrom = dateFrom;
+                analyticsCategoryDrillDateTo = dateTo;
+                analyticsBreakdownRows = [];
+                renderAnalyticsCategoryNavigation(type);
 
                 // Filter transactions by date range
                 let filteredTransactions = transactions;
@@ -9164,43 +9356,44 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                     dateRangeText = ` (${dateFrom ? formatDate(dateFrom) : 'Start'} - ${dateTo ? formatDate(dateTo) : 'Now'})`;
                 }
 
-                if (type === 'category') {
-                    // Spending by category
-                    const categoryData = {};
-                    filteredTransactions.filter(t => t.type === 'expense' && hasTransactionCategory(t)).forEach(t => {
-                        const category = t.category.trim();
-                        categoryData[category] = (categoryData[category] || 0) + Math.abs(t.amount);
-                    });
+                if (type === 'category' || type === 'incomeCategories') {
+                    const transactionType = type === 'category' ? 'expense' : 'income';
+                    const isExpense = transactionType === 'expense';
+                    const rows = getAnalyticsCategoryBreakdownRows(
+                        filteredTransactions,
+                        transactionType,
+                        analyticsCategoryDrillPath
+                    );
+                    analyticsBreakdownRows = rows;
 
-                    const totalSpent = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
-                    const categoryCount = Object.keys(categoryData).length;
-                    const sortedCategories = Object.entries(categoryData).sort((a, b) => b[1] - a[1]);
-                    const visibleCategories = sortedCategories.slice(0, 6);
-                    const remainingCategories = sortedCategories.slice(6);
-                    if (remainingCategories.length > 0) {
-                        visibleCategories.push([
-                            'Other categories',
-                            remainingCategories.reduce((sum, [, amount]) => sum + amount, 0)
-                        ]);
-                    }
+                    const colors = [
+                        '#E63946', '#457B9D', '#F1C40F', '#2ECC71', '#9B59B6', '#E67E22',
+                        '#1ABC9C', '#E74C3C', '#3498DB', '#F39C12', '#8E44AD', '#16A085',
+                        '#C0392B', '#2980B9', '#27AE60', '#D35400', '#7D3C98', '#138D75'
+                    ];
+                    const chartTitle = `${isExpense ? 'Spending' : 'Income'} by ` +
+                        (analyticsCategoryDrillPath.length
+                            ? analyticsCategoryDrillPath.join(' › ')
+                            : 'Major Category') +
+                        dateRangeText;
 
                     chartConfig = {
-                        type: 'doughnut',
+                        type: 'pie',
                         data: {
-                            labels: visibleCategories.map(([category]) => category),
+                            labels: rows.map(row => row.label),
                             datasets: [{
-                                data: visibleCategories.map(([, amount]) => amount),
-                                backgroundColor: [
-                                    '#E63946', '#457B9D', '#F1C40F', '#2ECC71', '#9B59B6', '#E67E22',
-                                    '#1ABC9C', '#E74C3C', '#3498DB', '#F39C12', '#8E44AD', '#16A085',
-                                    '#C0392B', '#2980B9', '#27AE60', '#D35400', '#7D3C98', '#138D75',
-                                    '#B03A2E', '#1F618D', '#229954', '#BA4A00', '#6C3483', '#117A65'
-                                ]
+                                data: rows.map(row => row.amount),
+                                backgroundColor: rows.map((row, index) => colors[index % colors.length])
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: true,
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    selectAnalyticsBreakdownItem(elements[0].index);
+                                }
+                            },
                             plugins: {
                                 legend: {
                                     display: false,
@@ -9208,14 +9401,14 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                                         generateLabels: function(chart) {
                                             const data = chart.data;
                                             if (data.labels.length && data.datasets.length) {
-                                                return data.labels.map((label, i) => {
+                                                return data.labels.map((label, index) => {
                                                     const dataset = data.datasets[0];
                                                     const meta = chart.getDatasetMeta(0);
                                                     return {
                                                         text: label,
-                                                        fillStyle: dataset.backgroundColor[i],
-                                                        hidden: meta.data[i] ? meta.data[i].hidden : false,
-                                                        index: i
+                                                        fillStyle: dataset.backgroundColor[index],
+                                                        hidden: meta.data[index] ? meta.data[index].hidden : false,
+                                                        index
                                                     };
                                                 });
                                             }
@@ -9225,48 +9418,14 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Spending by Category' +
-                                        (remainingCategories.length > 0 ? ' (top 6 + other)' : '') +
-                                        dateRangeText
-                                }
-                            },
-                            layout: {
-                                padding: {
-                                    bottom: categoryCount > 6 ? 20 : 10
+                                    text: chartTitle
                                 }
                             }
                         }
                     };
 
-                    summaryEl.innerHTML = `
-                        <div class="bg-white rounded-xl shadow-md p-4">
-                            <h3 class="text-lg font-semibold mb-3">Category Breakdown${dateRangeText}</h3>
-                            <div class="mb-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200">
-                                <p class="text-sm text-gray-600">Total Spending</p>
-                                <p class="text-2xl font-bold text-red-600">${currency}${formatAmount(totalSpent)}</p>
-                            </div>
-                            ${Object.entries(categoryData)
-                                .sort((a, b) => b[1] - a[1])
-                                .map(([category, amount]) => {
-                                    const percentage = ((amount / totalSpent) * 100).toFixed(1);
-                                    return `
-                                        <div class="py-2 border-b border-gray-100 hover:bg-gray-50 rounded p-2 cursor-pointer transition-colors" onclick="showCategoryDetails('${category}', '${dateFrom}', '${dateTo}')">
-                                            <div class="flex justify-between items-center mb-1">
-                                                <span class="text-gray-700 font-medium">${category}</span>
-                                                <span class="font-semibold text-gray-900">${currency}${formatAmount(amount)}</span>
-                                            </div>
-                                            <div class="flex items-center gap-2">
-                                                <div class="flex-1 bg-gray-200 rounded-full h-2">
-                                                    <div class="bg-indigo-600 h-2 rounded-full" style="width: ${percentage}%"></div>
-                                                </div>
-                                                <span class="text-xs text-gray-500">${percentage}%</span>
-                                            </div>
-                                            <p class="text-xs text-indigo-600 mt-1">👆 Click to see all items</p>
-                                        </div>
-                                    `;
-                                }).join('')}
-                        </div>
-                    `;
+                    renderAnalyticsCategoryNavigation(type);
+                    renderAnalyticsCategorySummary(summaryEl, type, rows, dateRangeText);
 
                 } else if (type === 'incomeSources') {
                     // Income by source (account)
@@ -9816,8 +9975,8 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
 
                 analyticsChart = new Chart(ctx, chartConfig);
                 
-                // Generate HTML legend for doughnut charts (category and incomeSources)
-                if (type === 'category' || type === 'incomeSources') {
+                // Generate HTML legends for category and income breakdowns.
+                if (type === 'category' || type === 'incomeCategories' || type === 'incomeSources') {
                     // Wait for chart to render, then create legend
                     requestAnimationFrame(() => {
                         createHTMLLegend(analyticsChart, 'chartLegend');
@@ -9866,7 +10025,11 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
 
                 // Filter transactions for this category within date range
                 let categoryTransactions = transactions.filter(t => {
-                    if (t.type !== 'expense' || t.category !== category) return false;
+                    if (
+                        t.type !== 'expense' ||
+                        !hasTransactionCategory(t) ||
+                        t.category.split('|').map(segment => segment.trim()).join('|') !== category
+                    ) return false;
                     
                     // Apply date range filter
                     if (dateFrom || dateTo) {
@@ -9942,6 +10105,85 @@ transfer,2000,${today},,,default,investment,Investment deposit,10,50`;
                         );
                     }
                 });
+
+                modal.classList.remove('hidden');
+            }
+
+            function showIncomeCategoryDetails(category, dateFrom, dateTo) {
+                const modal = document.getElementById('categoryDetailsModal');
+                const titleEl = document.getElementById('categoryDetailsTitle');
+                const contentEl = document.getElementById('categoryDetailsContent');
+                const categoryTransactions = transactions.filter(transaction => {
+                    if (
+                        transaction.type !== 'income' ||
+                        !hasTransactionCategory(transaction) ||
+                        transaction.category.split('|').map(segment => segment.trim()).join('|') !== category
+                    ) return false;
+                    const transactionDate = new Date(transaction.date);
+                    if (dateFrom && transactionDate < new Date(dateFrom)) return false;
+                    if (dateTo) {
+                        const endDate = new Date(dateTo);
+                        endDate.setHours(23, 59, 59, 999);
+                        if (transactionDate > endDate) return false;
+                    }
+                    return true;
+                }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                const totalAmount = categoryTransactions.reduce(
+                    (sum, transaction) => sum + Math.abs(Number(transaction.amount) || 0),
+                    0
+                );
+                titleEl.textContent =
+                    `${category} - ${categoryTransactions.length} income items (${currency}${formatAmount(totalAmount)})`;
+                contentEl.replaceChildren();
+
+                if (categoryTransactions.length === 0) {
+                    const emptyState = document.createElement('p');
+                    emptyState.className = 'py-8 text-center text-gray-500';
+                    emptyState.textContent = 'No income transactions found';
+                    contentEl.appendChild(emptyState);
+                } else {
+                    categoryTransactions.forEach(transaction => {
+                        const card = document.createElement('div');
+                        card.className = 'rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-3';
+
+                        const row = document.createElement('div');
+                        row.className = 'flex items-start justify-between gap-2';
+                        const details = document.createElement('div');
+                        details.className = 'flex-1';
+                        const description = document.createElement('p');
+                        description.className = 'text-sm font-semibold text-gray-800';
+                        description.textContent = transaction.description || 'Income';
+                        const date = document.createElement('p');
+                        date.className = 'mt-1 text-xs text-gray-600';
+                        date.textContent = transaction.date
+                            ? new Date(transaction.date).toLocaleString()
+                            : 'No date';
+                        const account = accounts.find(candidate => candidate.id === transaction.account);
+                        const accountName = document.createElement('p');
+                        accountName.className = 'text-xs text-gray-600';
+                        accountName.textContent = account ? account.name : 'Unknown Account';
+                        details.append(description, date, accountName);
+
+                        const amount = document.createElement('p');
+                        amount.className = 'font-bold text-green-700';
+                        amount.textContent = `+${currency}${formatAmount(Math.abs(Number(transaction.amount) || 0))}`;
+                        row.append(details, amount);
+
+                        const actions = document.createElement('div');
+                        actions.className = 'mt-2 flex justify-end';
+                        const editButton = document.createElement('button');
+                        editButton.type = 'button';
+                        editButton.className = 'rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200';
+                        editButton.textContent = 'Edit category';
+                        editButton.addEventListener('click', () =>
+                            editTransactionFromCategoryBreakdown(transaction.id)
+                        );
+                        actions.appendChild(editButton);
+                        card.append(row, actions);
+                        contentEl.appendChild(card);
+                    });
+                }
 
                 modal.classList.remove('hidden');
             }
