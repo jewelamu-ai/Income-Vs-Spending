@@ -746,9 +746,14 @@ A professional budget tracking application with Firebase integration
 
             <!-- Budgets Tab -->
             <div id="contentBudgets" class="tab-content hidden">
-                <div class="mb-4 flex justify-between items-center">
+                <div class="mb-4 flex flex-wrap justify-between items-center gap-3">
                     <h2 class="text-xl font-bold text-gray-800">Category Budgets</h2>
-                    <button onclick="openBudgetModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Budget</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label for="budgetMonth" class="text-sm font-medium text-gray-700">Month</label>
+                        <input type="month" id="budgetMonth" class="px-3 py-2 border rounded-lg" onchange="renderBudgets()">
+                        <button onclick="copyPreviousMonthBudgets()" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Copy previous month's budgets</button>
+                        <button onclick="openBudgetModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Budget</button>
+                    </div>
                 </div>
                 <div id="budgetsList"></div>
             </div>
@@ -1224,11 +1229,7 @@ A professional budget tracking application with Firebase integration
             <div class="space-y-3">
                 <select id="budgetCategory" class="w-full px-4 py-3 border rounded-lg"></select>
                 <input type="number" id="budgetAmount" step="0.01" placeholder="Budget Amount" class="w-full px-4 py-3 border rounded-lg">
-                <select id="budgetPeriod" class="w-full px-4 py-3 border rounded-lg">
-                    <option value="monthly">Monthly</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
+                <p id="budgetSuggestionNote" class="hidden text-xs text-gray-500">Suggested amount is based on actual spending for this month; adjust it as needed.</p>
                 <button onclick="addBudget()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold">Set Budget</button>
             </div>
         </div>
@@ -1923,6 +1924,7 @@ A professional budget tracking application with Firebase integration
         
         let transactions = [];
         let budgets = [];
+        let selectedBudgetMonth = getCurrentMonthKey();
         let accounts = [{id: 'default', name: 'Cash', type: 'cash', balance: 0}];
         let recurring = [];
         let reminders = [];
@@ -1956,6 +1958,106 @@ A professional budget tracking application with Firebase integration
         let pendingBudgetAssistantCategories = { income: [], expense: [] };
         let undoDeleteTimer = null;
         let undoDeleteNotification = null;
+
+        function getCurrentMonthKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getPreviousMonthKey(month) {
+            const [year, monthNumber] = month.split('-').map(Number);
+            const previousMonth = new Date(year, monthNumber - 2, 1);
+            return `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getTransactionMonth(date) {
+            if (typeof date === 'string' && /^\d{4}-\d{2}/.test(date)) {
+                return date.slice(0, 7);
+            }
+            const parsedDate = new Date(date);
+            if (Number.isNaN(parsedDate.getTime())) return null;
+            return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getBudgetMonth(budget) {
+            return budget.month || getCurrentMonthKey();
+        }
+
+        function getBudgetCategory(category) {
+            return String(category || 'Uncategorized').split('|')[0].trim() || 'Uncategorized';
+        }
+
+        function getMonthlyTransactionsByCategory(month) {
+            return transactions.reduce((groupedTransactions, transaction) => {
+                if (transaction.type !== 'expense' || getTransactionMonth(transaction.date) !== month) {
+                    return groupedTransactions;
+                }
+                const category = getBudgetCategory(transaction.category);
+                if (!groupedTransactions.has(category)) groupedTransactions.set(category, []);
+                groupedTransactions.get(category).push(transaction);
+                return groupedTransactions;
+            }, new Map());
+        }
+
+        function getMonthlyIncomeBySource(month) {
+            return transactions.reduce((incomeBySource, transaction) => {
+                if (transaction.type !== 'income' || getTransactionMonth(transaction.date) !== month) {
+                    return incomeBySource;
+                }
+                const account = accounts.find(item => item.id === transaction.account);
+                const source = account ? account.name : 'Unknown Account';
+                if (!incomeBySource.has(source)) incomeBySource.set(source, []);
+                incomeBySource.get(source).push(transaction);
+                return incomeBySource;
+            }, new Map());
+        }
+
+        function renderMonthlyIncomeSources(container, incomeBySource) {
+            if (!container) return;
+            Array.from(incomeBySource.entries())
+                .map(([source, items]) => ({
+                    source,
+                    items,
+                    total: items.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0)
+                }))
+                .sort((a, b) => b.total - a.total)
+                .forEach(({ source, items, total }) => {
+                    const sourceDetails = document.createElement('details');
+                    sourceDetails.className = 'rounded-lg border border-sky-100 bg-white p-3';
+
+                    const sourceSummary = document.createElement('summary');
+                    sourceSummary.className = 'cursor-pointer text-sm font-semibold text-sky-900';
+                    sourceSummary.textContent = `${source}: ${currency}${formatAmount(total)} · ${items.length} items`;
+
+                    const itemList = document.createElement('ul');
+                    itemList.className = 'mt-2 space-y-2';
+                    items.forEach(transaction => {
+                        const item = document.createElement('li');
+                        item.className = 'border-t border-gray-100 pt-2';
+
+                        const description = document.createElement('p');
+                        description.className = 'font-medium text-gray-800';
+                        description.textContent = transaction.description || transaction.category || 'Income';
+
+                        const metadata = document.createElement('p');
+                        metadata.className = 'text-xs text-gray-500';
+                        const transactionDate = transaction.date ? new Date(transaction.date) : null;
+                        const dateLabel = transactionDate && !Number.isNaN(transactionDate.getTime())
+                            ? transactionDate.toLocaleDateString('en-US')
+                            : 'Date unavailable';
+                        metadata.textContent = `${dateLabel} · ${transaction.category || 'Income'} · ${currency}${formatAmount(transaction.amount)}`;
+
+                        item.append(description, metadata);
+                        itemList.appendChild(item);
+                    });
+
+                    sourceDetails.append(sourceSummary, itemList);
+                    container.appendChild(sourceDetails);
+                });
+            if (incomeBySource.size === 0) {
+                container.textContent = 'No income recorded for this month.';
+            }
+        }
         
         // Email notification settings
         let emailNotifications = {
@@ -2928,11 +3030,6 @@ fuelEntries = data.fuelEntries ?? fuelEntries;
                 account.balance = 0;
             });
 
-            // Reset budget spent
-            budgets.forEach(budget => {
-                budget.spent = 0;
-            });
-
             // Check if this income transaction is linked to any transfer
             function isTransferInterestIncome(incomeTxn) {
                 return incomeTxn.relatedTransferId ? true : false;
@@ -2981,8 +3078,6 @@ fuelEntries = data.fuelEntries ?? fuelEntries;
                     
                     if (account) account.balance -= amount;
                     
-                    // Update budget spent
-                    updateBudgetSpent(transaction.category, amount);
                 }
             });
         }
@@ -3019,13 +3114,6 @@ function reduceLoanAssets(repaymentAmount) {
                 renderAssets();
         }
 
-            function updateBudgetSpent(category, amount) {
-                const budget = budgets.find(b => b.category === category);
-                if (budget) {
-                    budget.spent = Number(budget.spent || 0) + amount;
-                }
-            }
-        
         // Theme management
         function loadTheme() {
             const savedTheme = localStorage.getItem('budgetTracker_theme') || 'light';
@@ -3236,6 +3324,7 @@ function reduceLoanAssets(repaymentAmount) {
         function init() {
             // Load theme preference
             loadTheme();
+            document.getElementById('budgetMonth').value = selectedBudgetMonth;
             
             // Update profile selector
             updateProfileSelector();
@@ -4049,21 +4138,90 @@ function reduceLoanAssets(repaymentAmount) {
             function renderBudgets() {
                 const el = document.getElementById('budgetsList');
                 if (!el) return;
-                if (!budgets || budgets.length === 0) {
-                    el.innerHTML = `
+                const monthInput = document.getElementById('budgetMonth');
+                selectedBudgetMonth = monthInput.value || getCurrentMonthKey();
+                if (monthInput.value !== selectedBudgetMonth) monthInput.value = selectedBudgetMonth;
+                const monthBudgets = (budgets || []).filter(budget => getBudgetMonth(budget) === selectedBudgetMonth);
+                const monthlyTransactionsByCategory = getMonthlyTransactionsByCategory(selectedBudgetMonth);
+                const monthlySpending = new Map(
+                    Array.from(monthlyTransactionsByCategory, ([category, items]) => [
+                        category,
+                        items.reduce((total, transaction) => total + Number(transaction.amount || 0), 0)
+                    ])
+                );
+                const categoriesToShow = Array.from(new Set([
+                    ...monthBudgets.map(budget => budget.category),
+                    ...monthlySpending.keys()
+                ]));
+                const monthLabel = new Date(`${selectedBudgetMonth}-01T12:00:00`).toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                });
+                const monthlyIncomeBySource = getMonthlyIncomeBySource(selectedBudgetMonth);
+                const totalIncome = Array.from(monthlyIncomeBySource.values())
+                    .flat()
+                    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+                const totalBudget = monthBudgets.reduce((total, budget) => total + Number(budget.amount || 0), 0);
+                const totalSpent = Array.from(monthlySpending.values()).reduce((total, amount) => total + amount, 0);
+                const summaryHtml = `
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <div class="rounded-xl border border-sky-100 bg-sky-50 p-4">
+                            <p class="text-sm font-medium text-sky-800">Total income · ${monthLabel}</p>
+                            <details class="mt-1">
+                                <summary class="cursor-pointer list-none text-xl font-bold text-sky-950">
+                                    ${currency}${formatAmount(totalIncome)} <span class="text-sm font-medium text-sky-700">View income sources</span>
+                                </summary>
+                                <div data-monthly-income-sources class="mt-3 space-y-2"></div>
+                            </details>
+                        </div>
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                            <p class="text-sm font-medium text-indigo-800">Total budget · ${monthLabel}</p>
+                            <p class="mt-1 text-xl font-bold text-indigo-950">${currency}${formatAmount(totalBudget)}</p>
+                        </div>
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                            <p class="text-sm font-medium text-emerald-800">Total spent · ${monthLabel}</p>
+                            <p class="mt-1 text-xl font-bold text-emerald-950">${currency}${formatAmount(totalSpent)}</p>
+                        </div>
+                    </div>
+                `;
+                if (categoriesToShow.length === 0) {
+                    el.innerHTML = summaryHtml + `
                         <div class="text-center py-8">
                             <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 0v6m0-6l-6 6m6-6l6 6m-6-6v12"></path>
                             </svg>
-                            <p class="text-gray-500 text-lg">No budgets set</p>
-                            <p class="text-gray-400 text-sm">Create budgets to track your spending limits</p>
+                            <p class="text-gray-500 text-lg">No budgets set for ${monthLabel}</p>
+                            <p class="text-gray-400 text-sm">Create category budgets to compare against spending in this month</p>
                         </div>
                     `;
+                    renderMonthlyIncomeSources(el.querySelector('[data-monthly-income-sources]'), monthlyIncomeBySource);
                     return;
                 }
 
-                el.innerHTML = budgets.map(budget => {
-                    const spent = budget.spent || 0;
+                el.innerHTML = summaryHtml + categoriesToShow.map((category, index) => {
+                    const budget = monthBudgets.find(item => item.category === category);
+                    const spent = monthlySpending.get(category) || 0;
+                    if (!budget) {
+                        return `
+                            <div class="bg-white rounded-xl shadow-sm border border-amber-200 p-4 mb-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900">${category}</h3>
+                                        <p class="text-sm text-amber-700">No budget set</p>
+                                    </div>
+                                    <details class="text-right" data-spend-category-index="${index}">
+                                        <summary class="cursor-pointer text-sm font-semibold text-indigo-700">
+                                            Actual spent: ${currency}${formatAmount(spent)} · ${monthlyTransactionsByCategory.get(category).length} items
+                                        </summary>
+                                        <ul class="mt-2 space-y-2 text-left"></ul>
+                                    </details>
+                                </div>
+                                <button type="button" data-set-budget-index="${index}" class="mt-3 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                                    Set budget from this spending
+                                </button>
+                            </div>
+                        `;
+                    }
                     const remaining = budget.amount - spent;
                     const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
                     const isOverBudget = spent > budget.amount;
@@ -4073,11 +4231,16 @@ function reduceLoanAssets(repaymentAmount) {
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
                             <div class="flex items-center justify-between mb-2">
                                 <h3 class="font-semibold text-gray-900">${budget.category}</h3>
-                                <span class="text-sm text-gray-500 capitalize">${budget.period}</span>
+                                <span class="text-sm text-gray-500">Monthly</span>
                             </div>
                             <div class="mb-2">
                                 <div class="flex justify-between text-sm mb-1">
-                                    <span>Spent: ${currency}${formatAmount(spent)}</span>
+                                    <details data-spend-category-index="${index}">
+                                        <summary class="cursor-pointer text-indigo-700">
+                                            Actual spent: ${currency}${formatAmount(spent)} · ${monthlyTransactionsByCategory.get(category)?.length || 0} items
+                                        </summary>
+                                        <ul class="mt-2 space-y-2"></ul>
+                                    </details>
                                     <span>Budget: ${currency}${formatAmount(budget.amount)}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2">
@@ -4086,15 +4249,15 @@ function reduceLoanAssets(repaymentAmount) {
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-sm ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                    ${remaining >= 0 ? 'Remaining' : 'Over'}: ${currency}${formatAmount(Math.abs(remaining))}
+                                    ${remaining >= 0 ? 'Under budget' : 'Over budget'}: ${currency}${formatAmount(Math.abs(remaining))}
                                 </span>
                                 <div class="flex gap-2">
-                                    <button onclick="editBudget('${budget.category}')" class="text-blue-500 hover:text-blue-700 text-sm">
+                                    <button onclick="editBudget('${budget.category}', '${selectedBudgetMonth}')" class="text-blue-500 hover:text-blue-700 text-sm">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                     </button>
-                                    <button onclick="deleteBudget('${budget.category}')" class="text-red-500 hover:text-red-700 text-sm">
+                                    <button onclick="deleteBudget('${budget.category}', '${selectedBudgetMonth}')" class="text-red-500 hover:text-red-700 text-sm">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                         </svg>
@@ -4104,6 +4267,37 @@ function reduceLoanAssets(repaymentAmount) {
                         </div>
                     `;
                 }).join('');
+                renderMonthlyIncomeSources(el.querySelector('[data-monthly-income-sources]'), monthlyIncomeBySource);
+                el.querySelectorAll('[data-spend-category-index]').forEach(details => {
+                    const category = categoriesToShow[Number(details.dataset.spendCategoryIndex)];
+                    const itemList = details.querySelector('ul');
+                    (monthlyTransactionsByCategory.get(category) || []).forEach(transaction => {
+                        const item = document.createElement('li');
+                        item.className = 'border-t border-gray-100 pt-2';
+
+                        const description = document.createElement('p');
+                        description.className = 'font-medium text-gray-800';
+                        description.textContent = transaction.description || transaction.category || 'Expense';
+
+                        const metadata = document.createElement('p');
+                        metadata.className = 'text-xs text-gray-500';
+                        const transactionDate = transaction.date ? new Date(transaction.date) : null;
+                        const dateLabel = transactionDate && !Number.isNaN(transactionDate.getTime())
+                            ? transactionDate.toLocaleDateString('en-US')
+                            : 'Date unavailable';
+                        const detailCategory = transaction.category && transaction.category !== category
+                            ? ` • ${transaction.category}`
+                            : '';
+                        metadata.textContent = `${dateLabel}${detailCategory} • ${currency}${formatAmount(transaction.amount)}`;
+
+                        item.append(description, metadata);
+                        itemList.appendChild(item);
+                    });
+                });
+                el.querySelectorAll('[data-set-budget-index]').forEach(button => {
+                    const category = categoriesToShow[Number(button.dataset.setBudgetIndex)];
+                    button.addEventListener('click', () => setBudgetForCategory(category, monthlySpending.get(category) || 0));
+                });
             }
 
             function updateTotals() {
@@ -4771,7 +4965,7 @@ function reduceLoanAssets(repaymentAmount) {
                 // Clear form fields when opening
                 document.getElementById('budgetCategory').value = '';
                 document.getElementById('budgetAmount').value = '';
-                document.getElementById('budgetPeriod').value = 'monthly';
+                document.getElementById('budgetSuggestionNote').classList.add('hidden');
             }
             function closeBudgetModal() { 
                 document.getElementById('budgetModal').classList.add('hidden');
@@ -4785,66 +4979,136 @@ function reduceLoanAssets(repaymentAmount) {
                 // Clear form fields
                 document.getElementById('budgetCategory').value = '';
                 document.getElementById('budgetAmount').value = '';
-                document.getElementById('budgetPeriod').value = 'monthly';
+                document.getElementById('budgetSuggestionNote').classList.add('hidden');
+            }
+
+            function setBudgetForCategory(category, suggestedAmount) {
+                openBudgetModal();
+                const categorySelect = document.getElementById('budgetCategory');
+                if (!Array.from(categorySelect.options).some(option => option.value === category)) {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    categorySelect.add(option);
+                }
+                categorySelect.value = category;
+                document.getElementById('budgetAmount').value = suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '';
+                if (suggestedAmount > 0) {
+                    document.getElementById('budgetSuggestionNote').classList.remove('hidden');
+                }
             }
 
             function addBudget() {
                 const category = document.getElementById('budgetCategory').value;
                 const amount = parseFloat(document.getElementById('budgetAmount').value);
-                const period = document.getElementById('budgetPeriod').value;
                 if (!category || isNaN(amount) || amount <= 0) {
                     alert('Please enter valid category and amount');
                     return;
                 }
-                budgets.push({ category, amount, period, spent: 0 });
+                if (budgets.some(budget => budget.category === category && getBudgetMonth(budget) === selectedBudgetMonth)) {
+                    alert('A budget already exists for this category and month. Edit the existing budget instead.');
+                    return;
+                }
+                budgets.push({ category, amount, month: selectedBudgetMonth, period: 'monthly' });
                 saveToFirebase();
                 closeBudgetModal();
                 document.getElementById('budgetCategory').value = '';
                 document.getElementById('budgetAmount').value = '';
-                document.getElementById('budgetPeriod').value = 'monthly';
                 renderBudgets();
             }
 
-            function editBudget(category) {
-                const budget = budgets.find(b => b.category === category);
+            function copyPreviousMonthBudgets() {
+                const monthInput = document.getElementById('budgetMonth');
+                const targetMonth = monthInput.value || getCurrentMonthKey();
+                const previousMonth = getPreviousMonthKey(targetMonth);
+                const previousBudgets = budgets.filter(budget => getBudgetMonth(budget) === previousMonth);
+                if (previousBudgets.length === 0) {
+                    alert(`No budgets found for ${new Date(`${previousMonth}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.`);
+                    return;
+                }
+
+                const existingCategories = new Set(
+                    budgets.filter(budget => getBudgetMonth(budget) === targetMonth).map(budget => budget.category)
+                );
+                const budgetsToCopy = previousBudgets.filter(budget => {
+                    if (existingCategories.has(budget.category)) return false;
+                    existingCategories.add(budget.category);
+                    return true;
+                });
+                if (budgetsToCopy.length === 0) {
+                    alert('All categories from the previous month already have budgets for this month.');
+                    return;
+                }
+
+                const targetLabel = new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                });
+                const previousLabel = new Date(`${previousMonth}-01T12:00:00`).toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                });
+                if (!confirm(`Use ${previousLabel} budgets for ${targetLabel}? This will copy ${budgetsToCopy.length} category budget(s). Existing budgets for ${targetLabel} will not be changed.`)) {
+                    return;
+                }
+
+                budgetsToCopy.forEach(budget => {
+                    budgets.push({
+                        category: budget.category,
+                        amount: Number(budget.amount),
+                        month: targetMonth,
+                        period: 'monthly'
+                    });
+                });
+                selectedBudgetMonth = targetMonth;
+                saveToFirebase();
+                renderBudgets();
+            }
+
+            function editBudget(category, month) {
+                const budget = budgets.find(b => b.category === category && getBudgetMonth(b) === month);
                 if (!budget) return;
                 
                 document.getElementById('budgetCategory').value = budget.category;
                 document.getElementById('budgetAmount').value = budget.amount;
-                document.getElementById('budgetPeriod').value = budget.period;
+                document.getElementById('budgetSuggestionNote').classList.add('hidden');
                 
                 // Change modal button to "Update" and set onclick to updateBudget
                 const modal = document.getElementById('budgetModal');
                 const submitBtn = modal.querySelector('button[onclick*="addBudget"]');
                 submitBtn.textContent = 'Update Budget';
-                submitBtn.onclick = () => updateBudget(category);
+                submitBtn.onclick = () => updateBudget(category, month);
                 
                 modal.classList.remove('hidden');
             }
 
-            function updateBudget(oldCategory) {
+            function updateBudget(oldCategory, month) {
                 const newCategory = document.getElementById('budgetCategory').value;
                 const amount = parseFloat(document.getElementById('budgetAmount').value);
-                const period = document.getElementById('budgetPeriod').value;
                 
                 if (!newCategory || isNaN(amount) || amount <= 0) {
                     alert('Please enter valid category and amount');
                     return;
                 }
-                const budget = budgets.find(b => b.category === oldCategory);
+                const budget = budgets.find(b => b.category === oldCategory && getBudgetMonth(b) === month);
                 if (!budget) return;
+                if (newCategory !== oldCategory && budgets.some(b => b.category === newCategory && getBudgetMonth(b) === month)) {
+                    alert('A budget already exists for this category and month.');
+                    return;
+                }
                 budget.category = newCategory;
                 budget.amount = amount;
-                budget.period = period;
+                budget.month = month;
+                budget.period = 'monthly';
                 saveToFirebase();
                 closeBudgetModal();
                 renderBudgets();
                 alert('Budget updated successfully!');
             }
 
-            function deleteBudget(category) {
+            function deleteBudget(category, month) {
                 if (confirm('Are you sure you want to delete this budget?')) {
-                    budgets = budgets.filter(b => b.category !== category);
+                    budgets = budgets.filter(b => b.category !== category || getBudgetMonth(b) !== month);
                     saveToFirebase();
                     renderBudgets();
                 }
@@ -5134,8 +5398,6 @@ function reduceLoanAssets(repaymentAmount) {
                             // For expenses, deduct the total (amount + charge)
                             const totalExpense = amount + transactionCharge;
                             selectedAccount.balance = Number(selectedAccount.balance || 0) - totalExpense;
-                            // Update budget spent with total expense including charge
-                            updateBudgetSpent(category, totalExpense);
                         }
                     }
                 }
@@ -5592,11 +5854,6 @@ function reduceLoanAssets(repaymentAmount) {
                             if (transaction.charge > 0) {
                                 account.balance += transaction.charge;
                             }
-                            // Reverse budget spent
-                            const budget = budgets.find(b => b.category === transaction.category);
-                            if (budget) {
-                                budget.spent -= transaction.amount;
-                            }
                         }
                     }
                 }
@@ -5750,11 +6007,6 @@ function reduceLoanAssets(repaymentAmount) {
                         } else if (transaction.type === 'expense') {
                             // For expenses, amount already includes charge, so just add it back
                             account.balance += transaction.amount;
-                            // Reverse budget spent
-                            const budget = budgets.find(b => b.category === transaction.category);
-                            if (budget) {
-                                budget.spent -= transaction.amount;
-                            }
                         }
                     }
                 }
@@ -5894,10 +6146,6 @@ function reduceLoanAssets(repaymentAmount) {
                             } else if (transaction.type === 'expense') {
                                 // For expenses, amount already includes charge, so just add it back
                                 account.balance += transaction.amount;
-                                const budget = budgets.find(b => b.category === transaction.category);
-                                if (budget) {
-                                    budget.spent -= transaction.amount;
-                                }
                             }
                         }
                     }
@@ -5980,10 +6228,6 @@ function reduceLoanAssets(repaymentAmount) {
                             }
                         } else if (transaction.type === 'expense') {
                             account.balance -= transaction.amount;
-                            const budget = budgets.find(b => b.category === transaction.category);
-                            if (budget) {
-                                budget.spent += transaction.amount;
-                            }
                         }
                     }
                 }
