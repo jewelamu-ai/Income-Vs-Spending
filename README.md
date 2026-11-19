@@ -16,7 +16,7 @@ A professional, cloud-synced budget tracking application with comprehensive fina
 - **Income & Expense Tracking** - Log all your financial transactions
 - **Account Management** - Multiple accounts and asset tracking
 - **Transfer Support** - Move money between accounts seamlessly
-- **Budget Planning** - View monthly income, budget, and spending totals; expand income by source and category actuals by transaction; use unbudgeted spending as a suggested starting amount; and copy prior-month budgets with confirmation
+- **Budget Planning** - View monthly income, budget, and spending totals; sort categories by spending or alphabetically; expand income by source and category actuals by transaction; use unbudgeted spending as a suggested starting amount; and copy prior-month budgets with confirmation
 
 ### 🔍 Advanced Features
 - **Smart Search** - Search across all transaction fields (amount, description, category, date)

@@ -749,6 +749,11 @@ A professional budget tracking application with Firebase integration
                 <div class="mb-4 flex flex-wrap justify-between items-center gap-3">
                     <h2 class="text-xl font-bold text-gray-800">Category Budgets</h2>
                     <div class="flex flex-wrap items-center gap-2">
+                        <label for="budgetSort" class="text-sm font-medium text-gray-700">Sort</label>
+                        <select id="budgetSort" class="px-3 py-2 border rounded-lg" onchange="renderBudgets()">
+                            <option value="spent">Most spent</option>
+                            <option value="alphabetical">Alphabetical</option>
+                        </select>
                         <label for="budgetMonth" class="text-sm font-medium text-gray-700">Month</label>
                         <input type="month" id="budgetMonth" class="px-3 py-2 border rounded-lg" onchange="renderBudgets()">
                         <button onclick="copyPreviousMonthBudgets()" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Copy previous month's budgets</button>
@@ -4153,6 +4158,11 @@ function reduceLoanAssets(repaymentAmount) {
                     ...monthBudgets.map(budget => budget.category),
                     ...monthlySpending.keys()
                 ]));
+                const sortMode = document.getElementById('budgetSort').value;
+                categoriesToShow.sort((a, b) => {
+                    if (sortMode === 'alphabetical') return a.localeCompare(b);
+                    return (monthlySpending.get(b) || 0) - (monthlySpending.get(a) || 0) || a.localeCompare(b);
+                });
                 const monthLabel = new Date(`${selectedBudgetMonth}-01T12:00:00`).toLocaleDateString('en-US', {
                     month: 'long',
                     year: 'numeric'
